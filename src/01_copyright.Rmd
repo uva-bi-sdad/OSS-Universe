@@ -15,7 +15,7 @@ Obtain all copyright records in the
 
 U.S. Copyright Office. n.d. “Copyright Public Records Catalog Online. 1978 to Present.” US Library of Congress. Public Catalog. https://cocatalog.loc.gov/.
 
-Time Coverage: Last 20 years
+Time Coverage: 2006-2018
 
 Type of record: Computer File
 
@@ -36,9 +36,14 @@ The strategy will be to scrape records using the public portal in the following 
 
 1. Use RSelenium to cache options that use JavaScript (date, document type)
 2. Limit searches by date in order to avoid any query with more than 10,000 records
-3. Use the required search query term as the letters of the alphabet to allow crawling all possible records
+3. Use the required search query term uses the first alphanumeric character ([A-Z0-9])
 4. Use URL modifications to allow displaying all records in a single page
 5. Download all records in the Full Record format to the server
+
+## Examples
+- No records: year = 2006 & search_term = ABCD
+- Single record: year = 2006 & search_term = 0
+- Multiple records: A
 
 ## Data Harvest
 
@@ -57,6 +62,7 @@ library(dplyr)
 library(DBI)
 # Initiate Web Driver ----
 remDr <- remoteDriver(browserName = "chrome")
+# remDr <- remoteDriver(browserName = "chrome", remoteServerAddr = "selenium_chrome")
 ```
 
 Storing results from a server query
@@ -72,10 +78,10 @@ Storing results from a server query
 #'
 #' @param remoteDriver remDr
 #' @param character year
-#' @param integer letter: 1 => "A", 26 => "Z"
+#' @param character search_term
 #' @examples
-#' scrape_copyright_records(year = "2000", letter = 1L)
-scrape_copyright_records <- function(remDr, year, letter) {
+#' scrape_copyright_records(year = 2000, search_term = "A")
+scrape_copyright_records <- function(remDr, year, search_term) {
   # JavaScript ----
   remDr$open()
   remDr$navigate("https://cocatalog.loc.gov/")
@@ -84,10 +90,11 @@ scrape_copyright_records <- function(remDr, year, letter) {
   set_search_limits$clickElement()
   item_type <- remDr$findElement(using = "xpath",
                                  value = "/html/body/form/table/tbody/tr/td/div/table/tbody/tr[7]/td[2]/div/select/option[10]")
+  assert_that(item_type$getElementText() %>% getElement(name = 1L) == "Computer Files")
   item_type$clickElement()
   date_input <- remDr$findElement(using = "xpath",
                                   value = "/html/body/form/table/tbody/tr/td/div/table/tbody/tr[5]/td[2]/div/input[1]")
-  date_input$sendKeysToElement(list(year))
+  date_input$sendKeysToElement(list(as.character(year)))
   set_search_limits_submit <- remDr$findElement(using = "xpath",
                                                 value = "/html/body/form/table/tbody/tr/td/div/table/tbody/tr[10]/td/div/font/input[4]")
   set_search_limits_submit$clickElement()
@@ -96,66 +103,103 @@ scrape_copyright_records <- function(remDr, year, letter) {
   records_per_page$clickElement()
   search_for <- remDr$findElement(using = "xpath",
                                   value = "/html/body/form/table[1]/tbody/tr[1]/td/table[2]/tbody/tr[2]/td/table/tbody/tr[1]/td/font/b/input")
-  search_for$sendKeysToElement(list(LETTERS[letter]))
+  search_for$sendKeysToElement(list(as.character(search_term)))
   begin_search <- remDr$findElement(using = "xpath",
                                     value = "/html/body/form/table[1]/tbody/tr[2]/td/div/div/table/tbody/tr/td[2]/div/input[2]")
   begin_search$clickElement()
   # Verify that the maximum number of records for the query is below the limit ----
-  records_on_page <- remDr$findElement(using = "xpath",
-                                       value = "/html/body/table/tbody/tr[3]/td") %>%
-    (function(.) .$getElementText()) %>%
-    getElement(name = 1L) %>%
-    str_extract(pattern = "\\d+(?= entries.)") %>%
-    as.integer()
-  assert_that(records_on_page <= 1e4)
-  # All records on one page ----
-  new_url <- str_replace(string = remDr$getCurrentUrl(),
-                         pattern = "(?<=CNT=).*(?=&HIST)",
-                         replacement = "10000")
-  remDr$navigate(url = new_url)
-  page_url <- remDr$getCurrentUrl() %>%
-    getElement(name = 1L)
-  # Server Query ----
-  records_all_on_page <- remDr$findElement(using = "css",
-                                           "body > form > center > center:nth-child(10) > table > tbody > tr:nth-child(3) > td:nth-child(1) > input[type=RADIO]:nth-child(1)")
-  records_all_on_page$clickElement()
-  export <- remDr$findElement(using = "css",
-                              "body > form > center > center:nth-child(10) > table > tbody > tr:nth-child(2) > td:nth-child(2) > input[type=SUBMIT]")
-  export$clickElement()
-  server_url <- remDr$getCurrentUrl()[[1L]]
-  # Get all records ID ----
-  copyright_numbers <- str_extract_all(string = server_url,
-                                       pattern = "(?<=HID=)\\d+") %>%
-    getElement(name = 1L)
-  # Build Queries ----
-  queries <- map_chr(.x = seq(to = records_on_page, by = 500L),
-                     .f = function(x) str_c("HID=", str_c(copyright_numbers[x:min(x + 499L, records_on_page)], collapse = "&HID="))) %>%
-    str_c(str_extract(string = server_url, pattern = "^.*?(?=HID=)"),
-          .,
-          str_extract(string = server_url, pattern = "&PostSearchSortBy.*"))
-  # Run queries and save on disk ----
-  for (query in seq_along(queries)) {
-    remDr$navigate(url = queries[query])
+  # If there are no records,
+  no_records <- remDr$findElements(using = "xpath",
+                                   value = "/html/body/b")
+  if (!is_empty(x = no_records)) {
+    no_records <- no_records[[1L]]$getElementText() %>%
+      getElement(name = 1L) %>%
+      str_detect(pattern = "Your search found no results.")
+    if (no_records) {
+      return("No records")
+    }
+  }
+  # If there is one or more records
+  records_on_page <- remDr$findElements(using = "xpath",
+                                        value = "/html/body/table/tbody/tr[3]/td")
+  if (length(x = records_on_page) == 1L) {
+    records_on_page <- records_on_page[[1L]] %>%
+      (function(.) .$getElementText()) %>%
+      getElement(name = 1L) %>%
+      str_extract(pattern = "\\d+(?= entries.)") %>%
+      as.integer()
+    # Verify there aren't too many records
+    assert_that(records_on_page <= 1e4)
+    # All records on one page ----
+    new_url <- str_replace(string = remDr$getCurrentUrl(),
+                           pattern = "(?<=CNT=).*(?=&HIST)",
+                           replacement = "10000")
+    remDr$navigate(url = new_url)
+    } else {
+    # Special case when there is only one record
+    records_on_page <- 1L
+    export <- remDr$findElement(using = "css",
+                              "body > form:nth-child(6) > center:nth-child(25) > table > tbody > tr:nth-child(2) > td > input[type=SUBMIT]")
+    export$clickElement()
     output <- remDr$getPageSource() %>%
-      getElement(name = 1L)
-    path <- str_c(dirname(path = getwd()), "/data/copyright/original/", year, LETTERS[letter], query, ".html")
+        getElement(name = 1L)
+    path <- str_c(dirname(path = getwd()), "/data/oss/original/copyright/", year, search_term, "1.html")
     file.create(path)
     write(x = output, file = path)
+    return(value = str_c("year: ", year, " - ", "search_term: ", search_term))
+    }
+  # Server Query ----
+  records_all_on_page <- remDr$findElements(using = "css",
+                                            "body > form > center > center:nth-child(10) > table > tbody > tr:nth-child(3) > td:nth-child(1) > input[type=RADIO]:nth-child(1)")
+  # If there is only one record
+  if (length(x = records_all_on_page) == 1L) {
+    records_all_on_page <- records_all_on_page[[1]]
+    records_all_on_page$clickElement()
   }
+  if (records_on_page != 1L) {
+    export <- remDr$findElement(using = "css",
+                              "body > form > center > center:nth-child(10) > table > tbody > tr:nth-child(2) > td:nth-child(2) > input[type=SUBMIT]")
+    export$clickElement()
+    server_url <- remDr$getCurrentUrl()[[1L]]
+    # Get all records ID ----
+    copyright_numbers <- str_extract_all(string = server_url,
+                                         pattern = "(?<=HID=)\\d+") %>%
+      getElement(name = 1L)
+    # Build Queries ----
+    queries <- map_chr(.x = seq(to = records_on_page, by = 500L),
+                       .f = function(x) str_c("HID=", str_c(copyright_numbers[x:min(x + 499L, records_on_page)],
+                                                            collapse = "&HID="))) %>%
+      str_c(str_extract(string = server_url, pattern = "^.*?(?=HID=)"),
+            .,
+            str_extract(string = server_url, pattern = "&PostSearchSortBy.*"))
+    # Run queries and save on disk ----
+    for (query in seq_along(queries)) {
+      remDr$navigate(url = queries[query])
+      output <- remDr$getPageSource() %>%
+        getElement(name = 1L)
+      path <- str_c(dirname(path = getwd()), "/data/oss/original/copyright/", year, search_term, query, ".html")
+      file.create(path)
+      write(x = output, file = path)
+      Sys.sleep(time = 3L)
+      }
+    }
   # Close Web Driver ----
   remDr$close()
   }
 ```
-
+scrape_copyright_records(remDr = remDr, year = year, search_term = search_term)
 Run scrapper for a given year
 
 ```{r}
-# year <- "YYYY"
+year <- 2013L
+i <- 1
+search_term <- c(LETTERS, 0:9)[i]
+search_term
 start_time = Sys.time()
-# for (i in seq_along(LETTERS)) {
-#   scrape_copyright_records(remDr = remDr, year = year, letter = i)
-#   Sys.sleep(time = 5)
-# }
+for (search_term in c(LETTERS, 0:9)[i]) {
+  scrape_copyright_records(remDr = remDr, year = year, search_term = search_term)
+  Sys.sleep(time = 5L)
+}
 end_time <- Sys.time()
 end_time - start_time
 ```
@@ -198,7 +242,7 @@ parse_file <- function(filename) {
   }
 # It parses each file in the directory and combines all records in one tabular representation
 parse_files <- function() {
-  path <- str_c(dirname(path = getwd()), "/", "data", "/", "copyright", "/", "original", "/")
+  path <- str_c(dirname(path = getwd()), "/", "data", "/", "oss", "/", "original", "/", "copyright", "/")
   start_time = Sys.time()
   output <- map_df(.x = str_c(path, list.files(path = path)), .f = parse_file)
   end_time <- Sys.time()
@@ -219,7 +263,8 @@ The tabular representation is then processed and uploaded to the database
 # copyright <- output %>%
 #   unique() %>%
 #   mutate(`registration_number` = str_extract(string = `Registration Number / Date`, pattern = "\\w+"),
-#          date = str_extract(string = `Registration Number / Date`, pattern = "(?<= / )\\w+")) %>%
+#          date = str_extract(string = `Registration Number / Date`, pattern = "(?<= / )\\w+") %>%
+#                 as.Date()) %>%
 #   select(-c(`Registration Number / Date`, `Type of Work`)) %>%
 #   arrange(`Copyright Claimant`, date, Title)
 # colnames(x = copyright) <- names(x = copyright) %>%
@@ -234,11 +279,11 @@ copyright_to_bd <- function(copyright) {
                     user = Sys.getenv("db_userid"),
                     password = Sys.getenv("db_pwd"))
   dbWriteTable(conn = conn,
-              name = c(schema = "universe", name = "copyright"),
-              value = copyright,
-              row.names = FALSE,
-              overwrite = TRUE)
+               name = c(schema = "universe", name = "copyright"),
+               value = copyright,
+               row.names = FALSE,
+               overwrite = TRUE)
   dbDisconnect(conn = conn)
-}
+  }
 # copyright_to_bd(copyright = copyright)
 ```
