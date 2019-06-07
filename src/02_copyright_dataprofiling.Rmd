@@ -1,0 +1,59 @@
+---
+title: "Copyright Data Profiling"
+author: "Cong Cong"
+date: "2019-06-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading the packages
+```{r}
+library(dplyr)
+library(DBI)
+library(stringr)
+```
+
+## Define the function 
+```{r}
+copyright_from_bd <- function(copyright) {
+  conn <- dbConnect(drv = RPostgreSQL::PostgreSQL(),
+                  dbname = "oss",
+                  host = "postgis",
+                  port = "5432",
+                  user = Sys.getenv("db_userid"),
+                  password = Sys.getenv("db_pwd"))
+  data<-dbReadTable(conn = conn,
+            name = c(schema = "universe", name = "copyright"))
+  dbDisconnect(conn = conn)
+  }
+```
+
+## Read the data from database
+```{r}
+copyright_from_bd(copyright = copyright)
+```
+
+## Locate and assign organizations
+```{r}
+cp_data<-data%>%select("copyright_claimant")%>%
+  unique()%>%
+  mutate(business=str_detect(string =copyright_claimant,
+                        pattern="(?i)(corp|.?com|llp|inc.j)\\.?$|(lc.|Group|Entertainment|Computing|Software)$|Service.*|Consulting|Consultants|Business|Laboratories|Technologies|Technology|Bank|Corporation|Company|Studios|Solutions|inc.|l\\.?l\\.?c.?|ltd.|employer"),
+         government=str_detect(string=copyright_claimant,
+                               pattern = "(?i)Government|Authority|Council|Department|Commission|Office|County"),
+         nonprofits=str_detect(string=copyright_claimant,
+                               pattern="(?i)Association|Foundation|Fund|Board of Realtors|Assoc.|Society|Societies|Organization"),
+         universities=str_detect(string=copyright_claimant,
+                               pattern = "(?i)University|Academy|College|School|Institute|Research"),
+         individuals=str_detect(string = copyright_claimant,pattern ="(?i), \\d{4}-$"),
+         identified=business|government|nonprofits|universities|individuals)
+  
+```
+
+ 
+```{r}
+table(cp_data$identified)
+```
