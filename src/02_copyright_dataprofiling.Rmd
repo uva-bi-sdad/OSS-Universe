@@ -16,25 +16,20 @@ library(DBI)
 library(stringr)
 ```
 
-## Define the function 
+## Read the data from database
 ```{r}
-copyright_from_bd <- function(copyright) {
-  conn <- dbConnect(drv = RPostgreSQL::PostgreSQL(),
+conn <- dbConnect(drv = RPostgreSQL::PostgreSQL(),
                   dbname = "oss",
                   host = "postgis",
                   port = "5432",
                   user = Sys.getenv("db_userid"),
                   password = Sys.getenv("db_pwd"))
-  data<-dbReadTable(conn = conn,
+data<-dbReadTable(conn = conn,
             name = c(schema = "universe", name = "copyright"))
-  dbDisconnect(conn = conn)
-  }
+dbDisconnect(conn = conn)
+  
 ```
 
-## Read the data from database
-```{r}
-copyright_from_bd(copyright = copyright)
-```
 
 ## Locate and assign organizations
 ```{r}
