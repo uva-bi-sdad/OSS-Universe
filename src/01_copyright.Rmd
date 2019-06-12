@@ -245,29 +245,29 @@ The tabular representation is then processed and uploaded to the database
 
 ```{r}
 # Clean dataset ----
-# copyright <- output %>%
-#   unique() %>%
-#   mutate(`registration_number` = str_extract(string = `Registration Number / Date`, pattern = "\\w+"),
-#          date = str_extract(string = `Registration Number / Date`, pattern = "(?<= / )\\w+") %>%
-#                 as.Date()) %>%
-#   select(-c(`Registration Number / Date`, `Type of Work`)) %>%
-#   arrange(`Copyright Claimant`, date, Title)
-# colnames(x = copyright) <- names(x = copyright) %>%
-#   str_to_lower() %>%
-#   str_replace_all(pattern = "\\s+", replacement = "_")
+copyright <- output %>%
+   unique() %>%
+   mutate(`registration_number` = str_extract(string = `Registration Number / Date`, pattern = "\\w+"),
+          date = str_extract(string = `Registration Number / Date`, pattern = "(?<= / ).\\d{4}-{2}-{2}") %>%
+                 as.Date()) %>%
+   select(-c(`Registration Number / Date`, `Type of Work`)) %>%
+   arrange(`Copyright Claimant`, date, Title)
+colnames(x = copyright) <- names(x = copyright) 
 # Upload to database ----
 copyright_to_bd <- function() {
   conn <- dbConnect(drv = PostgreSQL(),
                     dbname = "oss",
                     host = "postgis",
-                    port = "5432L",
+                    port = 5432L,
                     user = Sys.getenv("db_userid"),
                     password = Sys.getenv("db_pwd"))
+  if (dbExistsTable(conn = conn, name = c(schema = "universe", name = "copyright"))) {
+    dbRemoveTable(conn = conn, name = c(schema = "universe", name = "copyright"))
+    }
   dbWriteTable(conn = conn,
                name = c(schema = "universe", name = "copyright"),
                value = copyright,
-               row.names = FALSE,
-               overwrite = TRUE)
+               row.names = FALSE)
   on.exit(expr = dbDisconnect(conn = conn))
   }
 # copyright_to_bd()
