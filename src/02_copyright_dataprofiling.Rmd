@@ -36,14 +36,14 @@ dbDisconnect(conn = conn)
 cp_data<-data%>%select("copyright_claimant")%>%
   unique()%>%
   mutate(business=str_detect(string =copyright_claimant,
-                        pattern="(?i)(corp|.?com|llp|inc.j)\\.?$|(lc.|Group|Entertainment|Computing|Software)$|Service.*|Consulting|Consultants|Business|Laboratories|Technologies|Technology|Bank|Corporation|Company|Studios|Solutions|inc.|l\\.?l\\.?c.?|ltd.|employer"),
+                        pattern="(?i)(corp|.?com|llp|inc.j|Corporation)\\.?$|(lc.|Group|Entertainment|Computing|Software)$|Service.*|Consulting|Consultants|Business|Laboratories|Technologies|Technology|Bank|Company|Studios|Solutions|inc.|l\\.?l\\.?c.?|ltd.|employer|Systems"),
          government=str_detect(string=copyright_claimant,
                                pattern = "(?i)Government|Authority|Council|Department|Commission|Office|County"),
          nonprofits=str_detect(string=copyright_claimant,
                                pattern="(?i)Association|Foundation|Fund|Board of Realtors|Assoc.|Society|Societies|Organization"),
          universities=str_detect(string=copyright_claimant,
                                pattern = "(?i)University|Academy|College|School|Institute|Research"),
-         individuals=str_detect(string = copyright_claimant,pattern ="(?i), \\d{4}-$"),
+         individuals=str_detect(string = copyright_claimant,pattern ="(?i)(, \\d{4}-|pseud|Jr.|Sr.|2nd)"),
          identified=business|government|nonprofits|universities|individuals)
   
 ```
@@ -51,4 +51,18 @@ cp_data<-data%>%select("copyright_claimant")%>%
  
 ```{r}
 table(cp_data$identified)
+length(which(cp_data$identified))/nrow(cp_data)
+
+test<-cbind(c("business","government","non-profit","university","individual","unidentified"),c(length(which(cp_data$business)),length(which(cp_data$government)),length(which(cp_data$nonprofits)),length(which(cp_data$universities)),length(which(cp_data$individuals)),nrow(cp_data)-length(which(cp_data$identified))))
+
+test<-data.frame(test)
+colnames(test)<-c("sector","number")
+test$pct<-as.numeric(as.character(test$number))*100/nrow(cp_data)
+
+ggplot(test, aes(x = 2, y = pct,fill=sector)) +
+    geom_bar(width = 1, stat = "identity", color = "white") +
+    coord_polar("y",start = 0)+
+    geom_text(aes(y = pct, label = paste0(round(pct,2),"%")), color = "white",position = position_stack(vjust = 0.5))+
+    theme_void()+
+    xlim(0.5, 2.5)
 ```
