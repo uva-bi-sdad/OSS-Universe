@@ -32,9 +32,43 @@ dbDisconnect(conn = conn)
 ```
 
 ============================= BACKGROUND ============================= 
-1, What are copyrights
-2, How they appear online (more background)
-ELIZA
+#OSS Technical Document 
+
+##Introduction 
+
+This technical document evaluates the feasibility of using copyright data from the U.S. Copyright Office to measure innovation from Open Source Software (OSS). OSS makes up a large portion of the code created for productive use. Still, there are no commonly used metrics to measure the amount of OSS in existence. While copyrights inform economic metrics for traditional proprietary industries, it has not been used to measure OSS. In this document, copyright data are evaluated for use in identifying OSS innovation in the United States. 
+
+##Data Source Overview: 
+
+###Data Source: 
+
+All copyrights filed through the U.S. Copyright Office with the U.S. Library of Congress are publicly available via an online catalog. These files are stored in HTML format with and can be accessed at a maximum of 10,000 records per search. There is currently no bulk download functionality for these files, so we developed a web-scraping strategy to access the files. We used the following approach to guide our progress: 
+
+1. Use RSelenium to cache options that use JavaScript (date, document type) 
+
+2. Limit searches by date in order to avoid any query with more than 10,000 records 
+
+3. Use the required search query term uses the first alphanumeric character ([A-Z0-9]) 
+
+4. Use URL modifications to allow displaying all records in a single page 
+
+5. Download all records in the Full Record format to the server 
+
+While the U.S. Copyright Office keeps files on many different fields, search results were limited to those that were of type “Computer File,” as all OSS technology falls within that category. After the HTML files were downloaded, they were fed through a REGEX filter the data to a workable database. This resulted in a database with 47 variables and 110,652 observations. 
+
+##Background 
+
+According to the U.S. Copyright Office, copyright is a “form of protection providing by the laws of the United States to the authors of ‘original works of authorship’ that are fixed in a tangible form of expression” [1, 1]. An original work of authorship is categorized as an independent, minimally creative output constructed by a person. The Copyright Office finds a work to be “fixed” when it is solidified in a relatively changeless medium. The medium qualifies as permanent so long as the copyrighted work is distinguishable, duplicatable, and communicable. From the instant that the “original work of authorship is fixed,” a creation becomes copyrighted [1]. 
+
+Copyrighted works created in and after 1978 last 70 years after the death of the claimant. For works authored by multiple actors, the claim lasts 70 years after the final death of the last remaining creator. For works created by employees as representatives of their companies, as well as for authors identifying under a pseudonym or anonymously, the copyright lasts for either 95 since a work’s inception or 120 years since publication. The shorter duration is chosen [1]. 
+
+There are various types of creations that are not protected by U.S. Copyright law. The U.S. Copyright Office states that “ideas, procedures, methods, systems, processes, concepts, principles,” and “discoveries” are not guarded by copyright [1, 2]. Additionally, a work must be fixed in a concrete manner. Moreover, works lacking minimal creativity are not considered for copyright. According to the U.S. Copyright Office, this includes “titles, names, short phrases, and slogans,” as well as “familiar symbols or designs” [1, 2]. Other works, including those that are “mere variations of typographic ornamentation, lettering, or coloring,” and those that are “listings of ingredients or contents,” will not be protected under U.S. copyright law [1, 2]. 
+
+Once copyright ownership is gained, the claimant has numerous rights over their work. Owners can recreate the product, generate new iterations of the original work, and sell or temporarily award ownership by means of various types of renting. Other ownership rights exist and depend on the type of work copyrighted [1].  
+
+When attempting to use a copyrighted work, it is best to ask for approval from the claimant. A copyright owner can grant permission to another individual to perform actions upon a copyrighted work that would normally be reserved solely for the claimant [1]. 
+
+
 
 ============================= DATA PROFILING ============================= 
 Initial Results
@@ -108,14 +142,53 @@ print(c)
 ```
 
 ============================= SPLITTING INTO SECTORS =============================
+The copyright_claimant variable contains the name of the person or entity who had filed the copyright, from which we can infer the sectors these copyright files belong to. For example, claimant names which contain "company", "coorporation" or "Ltd" can be identified as from the business sector. We attempted to identify five sectors (business, government, non-profit, university, and individual) by detecting a series of string patterns. 
+We refined our method by modifying detection rules to increase matching records and avoid overlaps between sectors. Our result shows 81.06% of the 39,969 unique claimant names has been identified as in either of the five sectors.
+
+```{r}
+cp_data <- data %>% select("copyright_claimant")%>%
+  unique()%>%
+  mutate(business = str_detect(string = copyright_claimant,                        pattern ="(?i)(corp|.?com|llp|inc.j|corporation)\\.?$|(lc.|Group|Entertainment|Computing|Software)$|Service.*|Consulting|Consultants|Business|Laboratories|Technologies|Technology|Bank|Company|Studios|Solutions|inc.|l\\.?l\\.?c.?|ltd|employer|Systems|System|Limited|Publishing"))%>%
+  mutate(nonprofit = str_detect(string=copyright_claimant,
+                               pattern ="(?i)association|foundation|fund|board of realtors|assoc.|society|societies|organization|board") & business==FALSE)%>%
+  mutate(government = str_detect(string=copyright_claimant,
+                               pattern = "(?i)government|authority|council|department|commission|office|county|administration") & business == FALSE & nonprofit == FALSE)%>%
+  mutate(university = str_detect(string=copyright_claimant,
+                               pattern = "(?i)university|academy|college|school|institute|research") & business == FALSE & nonprofit == FALSE & government ==FALSE)%>%
+  mutate(individual = str_detect(string = copyright_claimant,pattern ="(?i)(, \\d{4}-|pseud|Jr.|Sr.|2nd)") & business == FALSE & nonprofit == FALSE & government == FALSE & university == FALSE)%>%
+  mutate(identified = business | nonprofit | government | university | individual)
 
 
-and results of that!
+```
+
+The percentage of copyright claimants in each sector is shown below.
+```{r}
+df <- cbind.data.frame(c("business","government","non-profit","university","individual","unidentified"),            c(length(which(cp_data$business)),length(which(cp_data$government)),length(which(cp_data$nonprofit)),length(which(cp_data$university)),length(which(cp_data$individual)),nrow(cp_data)-length(which(cp_data$identified))))
+            
+colnames(df)<-c("sector","count")
+df$pct<-as.numeric(as.character(df$count))*100/nrow(cp_data)
+df
+
+```
+
+```{r}
+ggplot(df, aes(x = 2, y = pct, fill=sector)) +
+    geom_bar(width = 1, stat = "identity", color = "white") +
+    coord_polar("y",start = 0)+
+    geom_text(aes(y = pct, label = paste0(round(pct,2),"%")), color = "white",position = position_stack(vjust = 0.5))+
+    xlim(0.5, 2.5)
+```
 
 
 ============================= VALIDATING THE SECTORS ============================= 
 
+
+
+
 ============================= CHALLENGES ============================= 
 Looking for OSS in the data
 
+
+
 ============================= SUMMARY OF USEFULNESS ============================= 
+
