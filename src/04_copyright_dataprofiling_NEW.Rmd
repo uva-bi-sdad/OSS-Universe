@@ -1,7 +1,7 @@
 ---
 title: "Copyright Data Profiling"
 author: "Cong Cong"
-date: "2019-06-03"
+date: "2019-06-20"
 output: html_document
 ---
 
@@ -31,44 +31,13 @@ dbDisconnect(conn = conn)
   
 ```
 
+============================= BACKGROUND ============================= 
+1, What are copyrights
+2, How they appear online (more background)
+ELIZA
 
-## Locate and assign organizations
-```{r}
-cp_data<-data%>%select("copyright_claimant")%>%
-  unique()%>%
-  mutate(business=str_detect(string =copyright_claimant,
-                        pattern="(?i)(corp|.?com|llp|inc.j|Corporation)\\.?$|(lc.|Group|Entertainment|Computing|Software)$|Service.*|Consulting|Consultants|Business|Laboratories|Technologies|Technology|Bank|Company|Studios|Solutions|inc.|l\\.?l\\.?c.?|ltd.|employer|Systems"),
-         government=str_detect(string=copyright_claimant,
-                               pattern = "(?i)Government|Authority|Council|Department|Commission|Office|County"),
-         nonprofits=str_detect(string=copyright_claimant,
-                               pattern="(?i)Association|Foundation|Fund|Board of Realtors|Assoc.|Society|Societies|Organization"),
-         universities=str_detect(string=copyright_claimant,
-                               pattern = "(?i)University|Academy|College|School|Institute|Research"),
-         individuals=str_detect(string = copyright_claimant,pattern ="(?i)(, \\d{4}-|pseud|Jr.|Sr.|2nd)"),
-         identified=business|government|nonprofits|universities|individuals)
-  
-```
-
- 
-```{r}
-table(cp_data$identified)
-length(which(cp_data$identified))/nrow(cp_data)
-
-test<-cbind(c("business","government","non-profit","university","individual","unidentified"),c(length(which(cp_data$business)),length(which(cp_data$government)),length(which(cp_data$nonprofits)),length(which(cp_data$universities)),length(which(cp_data$individuals)),nrow(cp_data)-length(which(cp_data$identified))))
-
-test<-data.frame(test)
-colnames(test)<-c("sector","number")
-test$pct<-as.numeric(as.character(test$number))*100/nrow(cp_data)
-
-ggplot(test, aes(x = 2, y = pct,fill=sector)) +
-    geom_bar(width = 1, stat = "identity", color = "white") +
-    coord_polar("y",start = 0)+
-    geom_text(aes(y = pct, label = paste0(round(pct,2),"%")), color = "white",position = position_stack(vjust = 0.5))+
-    theme_void()+
-    xlim(0.5, 2.5)
-```
-
-Calvin's additions beginning to profile the data
+============================= DATA PROFILING ============================= 
+Initial Results
 First we looked at all 47 variables and measured their completeness (non- NA results)
 ```{r}
 plot_missing(data)
@@ -100,7 +69,7 @@ These ten variables were profiled to determine the data quality and usability on
 keep_data <- data %>%
   select("application_title","title","description","notes","copyright_claimant","date_of_creation","date_of_publication","basis_of_claim","nation_of_first_publication","previous_registration")
 
-# Completeness: Simply identify the 
+# Completeness: Simply identify the NA's in the document
 plot_missing(keep_data)
 colSums(is.na(keep_data))
 
@@ -137,3 +106,16 @@ for (d in z) {
 print(c)
 
 ```
+
+============================= SPLITTING INTO SECTORS =============================
+
+
+and results of that!
+
+
+============================= VALIDATING THE SECTORS ============================= 
+
+============================= CHALLENGES ============================= 
+Looking for OSS in the data
+
+============================= SUMMARY OF USEFULNESS ============================= 
