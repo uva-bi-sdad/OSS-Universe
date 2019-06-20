@@ -1,0 +1,139 @@
+---
+title: "Copyright Data Profiling"
+author: "Cong Cong"
+date: "2019-06-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading the packages
+```{r}
+library(dplyr)
+library(DBI)
+library(stringr)
+library(DataExplorer)
+```
+
+## Read the data from database
+```{r}
+conn <- dbConnect(drv = RPostgreSQL::PostgreSQL(),
+                  dbname = "oss",
+                  host = "postgis",
+                  port = "5432",
+                  user = Sys.getenv("db_userid"),
+                  password = Sys.getenv("db_pwd"))
+data<-dbReadTable(conn = conn,
+            name = c(schema = "universe", name = "copyright"))
+dbDisconnect(conn = conn)
+  
+```
+
+
+## Locate and assign organizations
+```{r}
+cp_data<-data%>%select("copyright_claimant")%>%
+  unique()%>%
+  mutate(business=str_detect(string =copyright_claimant,
+                        pattern="(?i)(corp|.?com|llp|inc.j|Corporation)\\.?$|(lc.|Group|Entertainment|Computing|Software)$|Service.*|Consulting|Consultants|Business|Laboratories|Technologies|Technology|Bank|Company|Studios|Solutions|inc.|l\\.?l\\.?c.?|ltd.|employer|Systems"),
+         government=str_detect(string=copyright_claimant,
+                               pattern = "(?i)Government|Authority|Council|Department|Commission|Office|County"),
+         nonprofits=str_detect(string=copyright_claimant,
+                               pattern="(?i)Association|Foundation|Fund|Board of Realtors|Assoc.|Society|Societies|Organization"),
+         universities=str_detect(string=copyright_claimant,
+                               pattern = "(?i)University|Academy|College|School|Institute|Research"),
+         individuals=str_detect(string = copyright_claimant,pattern ="(?i)(, \\d{4}-|pseud|Jr.|Sr.|2nd)"),
+         identified=business|government|nonprofits|universities|individuals)
+  
+```
+
+ 
+```{r}
+table(cp_data$identified)
+length(which(cp_data$identified))/nrow(cp_data)
+
+test<-cbind(c("business","government","non-profit","university","individual","unidentified"),c(length(which(cp_data$business)),length(which(cp_data$government)),length(which(cp_data$nonprofits)),length(which(cp_data$universities)),length(which(cp_data$individuals)),nrow(cp_data)-length(which(cp_data$identified))))
+
+test<-data.frame(test)
+colnames(test)<-c("sector","number")
+test$pct<-as.numeric(as.character(test$number))*100/nrow(cp_data)
+
+ggplot(test, aes(x = 2, y = pct,fill=sector)) +
+    geom_bar(width = 1, stat = "identity", color = "white") +
+    coord_polar("y",start = 0)+
+    geom_text(aes(y = pct, label = paste0(round(pct,2),"%")), color = "white",position = position_stack(vjust = 0.5))+
+    theme_void()+
+    xlim(0.5, 2.5)
+```
+
+Calvin's additions beginning to profile the data
+First we looked at all 47 variables and measured their completeness (non- NA results)
+```{r}
+plot_missing(data)
+colSums(is.na(data))
+
+```
+
+We then selected these variables, as they showed the most promise for being explanatorily useful
+## IS THERE SOMEWHERE TO GET MORE ACCURATE META-DATA (VARIABLE DESCRIPTIONS)?
+1. application_title - title of the application, sometimes different from title
+2. title - the copyright title
+3. description - short text describing the copyright application
+4. notes -  notes on the copyright
+5. copyright_claimant - The individual who filed the copyright
+6. date_of_creation - The date the copyright application was created
+7. date_of_publication -  The date the copyright was published
+8. basis_of_claim - the reason for filing a copyright
+9. nation_of_first_publication - The nation where the copyright was first published
+10. previous_registration - if the copyright was ever previously registered
+
+These ten variables were profiled to determine the data quality and usability on the following metrics:
+•	Completeness - completeness is a variable metric, the metric is a percentage, the number of observations that have values compared to the number of observations that “should” have values.
+•	Value validity - value validity is a variable metric, data elements with proper values have value validity; the metric is the percentage of data elements whose attributes possess values within the range expected for a legitimate entry. 
+•	Consistency - consistency is a variable metric, it is the degree of logical agreement between variable values. The rules that specify the logical relationships between the entity values are called dependency constraints. A simple example of a dependency constraint violation would be a location disagreement, a zip-code that does not agree with a state code. 
+•	Uniqueness - uniqueness is a variable metric, it is the number of unique valid values that have been entered for a variable.
+•	Duplication - duplication is a data set metric, it is the degree of replication of distinct observations per observation unit type; the metric is the percentage of observations in a data set that are duplicated.
+
+```{r}
+keep_data <- data %>%
+  select("application_title","title","description","notes","copyright_claimant","date_of_creation","date_of_publication","basis_of_claim","nation_of_first_publication","previous_registration")
+
+# Completeness: Simply identify the 
+plot_missing(keep_data)
+colSums(is.na(keep_data))
+
+# Uniqueness:
+for (i in names(keep_data)) {
+  uni<-length(unique(keep_data[[i]]))
+  print(paste(i,":",uni))
+}
+
+# Duplication -- none
+print(length(keep_data)-length(unique(keep_data[1:10])))
+
+# Validation
+#  application_title, title, description, notes, copyright_claimaint, basis_of_claim, nation_of_first_publication, and previous_registration are all character type, so nothing to report except number of na's
+
+# check if look like date for date_of_creation, and date_of_publication
+z <- as.Date(keep_data$date_of_publication, "%Y-%m-%d")
+sum(is.na(z))
+y <- as.Date(paste(keep_data$date_of_creation,"-01-01",sep=""),"%Y-%m-%d")
+sum(is.na(y))
+
+# Consistency was evaluated through checking the date of publication, and creation:
+c = 0
+for (d in z) {
+  if (is.na(d)) {
+    next
+  } else if (d > "1960-01-01" && d < "2018-01-01") {
+    c = c + 1
+    next
+  } else {
+    next
+  }
+}
+print(c)
+
+```
