@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(DBI)
 library(stringr)
+library(ggplot2)
 ```
 
 ## Read the data from database
@@ -33,36 +34,42 @@ dbDisconnect(conn = conn)
 
 ## Locate and assign organizations
 ```{r}
-cp_data<-data%>%select("copyright_claimant")%>%
+cp_data <- data %>% select("copyright_claimant")%>%
   unique()%>%
-  mutate(business=str_detect(string =copyright_claimant,
-                        pattern="(?i)(corp|.?com|llp|inc.j|Corporation)\\.?$|(lc.|Group|Entertainment|Computing|Software)$|Service.*|Consulting|Consultants|Business|Laboratories|Technologies|Technology|Bank|Company|Studios|Solutions|inc.|l\\.?l\\.?c.?|ltd.|employer|Systems"),
-         government=str_detect(string=copyright_claimant,
-                               pattern = "(?i)Government|Authority|Council|Department|Commission|Office|County"),
-         nonprofits=str_detect(string=copyright_claimant,
-                               pattern="(?i)Association|Foundation|Fund|Board of Realtors|Assoc.|Society|Societies|Organization"),
-         universities=str_detect(string=copyright_claimant,
-                               pattern = "(?i)University|Academy|College|School|Institute|Research"),
-         individuals=str_detect(string = copyright_claimant,pattern ="(?i)(, \\d{4}-|pseud|Jr.|Sr.|2nd)"),
-         identified=business|government|nonprofits|universities|individuals)
-  
+  mutate(business = str_detect(string = copyright_claimant,                        pattern ="(?i)(corp|.?com|llp|inc.j|corporation)\\.?$|(lc.|Group|Entertainment|Computing|Software)$|Service.*|Consulting|Consultants|Business|Laboratories|Technologies|Technology|Bank|Company|Studios|Solutions|inc.|l\\.?l\\.?c.?|ltd|employer|Systems|System|Limited|Publishing"))%>%
+  mutate(nonprofit = str_detect(string=copyright_claimant,
+                               pattern ="(?i)association|foundation|fund|board of realtors|assoc.|society|societies|organization|board") & business==FALSE)%>%
+  mutate(government = str_detect(string=copyright_claimant,
+                               pattern = "(?i)government|authority|council|department|commission|office|county|administration") & business == FALSE & nonprofit == FALSE)%>%
+  mutate(university = str_detect(string=copyright_claimant,
+                               pattern = "(?i)university|academy|college|school|institute|research") & business == FALSE & nonprofit == FALSE & government ==FALSE)%>%
+  mutate(individual = str_detect(string = copyright_claimant,pattern ="(?i)(, \\d{4}-|pseud|Jr.|Sr.|2nd)") & business == FALSE & nonprofit == FALSE & government == FALSE & university == FALSE)%>%
+  mutate(identified = business | nonprofit | government | university | individual)
+
 ```
 
- 
+## How many have been identified
 ```{r}
 table(cp_data$identified)
 length(which(cp_data$identified))/nrow(cp_data)
+```
 
-test<-cbind(c("business","government","non-profit","university","individual","unidentified"),c(length(which(cp_data$business)),length(which(cp_data$government)),length(which(cp_data$nonprofits)),length(which(cp_data$universities)),length(which(cp_data$individuals)),nrow(cp_data)-length(which(cp_data$identified))))
+## Divided by sectors
+```{r}
+df <- cbind.data.frame(c("business","government","non-profit","university","individual","unidentified"),            c(length(which(cp_data$business)),length(which(cp_data$government)),length(which(cp_data$nonprofit)),length(which(cp_data$university)),length(which(cp_data$individual)),nrow(cp_data)-length(which(cp_data$identified))))
+            
+colnames(df)<-c("sector","count")
+df$pct<-as.numeric(as.character(df$count))*100/nrow(cp_data)
+df
+#df <- rbind.data.frame(df , c("TOTAL",sum(df$count),sum(df$pct)))
+```
 
-test<-data.frame(test)
-colnames(test)<-c("sector","number")
-test$pct<-as.numeric(as.character(test$number))*100/nrow(cp_data)
-
-ggplot(test, aes(x = 2, y = pct,fill=sector)) +
+## Plot
+```{r}
+ggplot(df, aes(x = 2, y = pct, fill=sector)) +
     geom_bar(width = 1, stat = "identity", color = "white") +
     coord_polar("y",start = 0)+
     geom_text(aes(y = pct, label = paste0(round(pct,2),"%")), color = "white",position = position_stack(vjust = 0.5))+
-    theme_void()+
     xlim(0.5, 2.5)
 ```
+
