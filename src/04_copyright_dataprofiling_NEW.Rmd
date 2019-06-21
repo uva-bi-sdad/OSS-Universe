@@ -37,13 +37,21 @@ dbDisconnect(conn = conn)
 #OSS Technical Document 
 
 ##Introduction 
-
 This technical document evaluates the feasibility of using copyright data from the U.S. Copyright Office to measure innovation from Open Source Software (OSS). OSS makes up a large portion of the code created for productive use. Still, there are no commonly used metrics to measure the amount of OSS in existence. While copyrights inform economic metrics for traditional proprietary industries, it has not been used to measure OSS. In this document, copyright data are evaluated for use in identifying OSS innovation in the United States. 
 
+##Background 
+According to the U.S. Copyright Office, copyright is a “form of protection providing by the laws of the United States to the authors of ‘original works of authorship’ that are fixed in a tangible form of expression” [1, 1]. An original work of authorship is categorized as an independent, minimally creative output constructed by a person. The Copyright Office finds a work to be “fixed” when it is solidified in a relatively changeless medium. The medium qualifies as permanent so long as the copyrighted work is distinguishable, duplicatable, and communicable. From the instant that the “original work of authorship is fixed,” a creation becomes copyrighted [1]. 
+
+Copyrighted works created in and after 1978 last 70 years after the death of the claimant. For works authored by multiple actors, the claim lasts 70 years after the final death of the last remaining creator. For works created by employees as representatives of their companies, as well as for authors identifying under a pseudonym or anonymously, the copyright lasts for either 95 since a work’s inception or 120 years since publication. The shorter duration is chosen [1]. 
+
+There are various types of creations that are not protected by U.S. Copyright law. The U.S. Copyright Office states that “ideas, procedures, methods, systems, processes, concepts, principles,” and “discoveries” are not guarded by copyright [1, 2]. Additionally, a work must be fixed in a concrete manner. Moreover, works lacking minimal creativity are not considered for copyright. According to the U.S. Copyright Office, this includes “titles, names, short phrases, and slogans,” as well as “familiar symbols or designs” [1, 2]. Other works, including those that are “mere variations of typographic ornamentation, lettering, or coloring,” and those that are “listings of ingredients or contents,” will not be protected under U.S. copyright law [1, 2]. 
+
+Once copyright ownership is gained, the claimant has numerous rights over their work. Owners can recreate the product, generate new iterations of the original work, and sell or temporarily award ownership by means of various types of renting. Other ownership rights exist and depend on the type of work copyrighted [1].  
+
+When attempting to use a copyrighted work, it is best to ask for approval from the claimant. A copyright owner can grant permission to another individual to perform actions upon a copyrighted work that would normally be reserved solely for the claimant [1]. 
+
 ##Data Source Overview: 
-
 ###Data Source: 
-
 All copyrights filed through the U.S. Copyright Office with the U.S. Library of Congress are publicly available via an online catalog. These files are stored in HTML format with and can be accessed at a maximum of 10,000 records per search. There is currently no bulk download functionality for these files, so we developed a web-scraping strategy to access the files. We used the following approach to guide our progress: 
 
 1. Use RSelenium to cache options that use JavaScript (date, document type) 
@@ -56,24 +64,9 @@ All copyrights filed through the U.S. Copyright Office with the U.S. Library of 
 
 5. Download all records in the Full Record format to the server 
 
-While the U.S. Copyright Office keeps files on many different fields, search results were limited to those that were of type “Computer File,” as all OSS technology falls within that category. After the HTML files were downloaded, they were fed through a REGEX filter the data to a workable database. This resulted in a database with 47 variables and 110,652 observations. 
-
-##Background 
-
-According to the U.S. Copyright Office, copyright is a “form of protection providing by the laws of the United States to the authors of ‘original works of authorship’ that are fixed in a tangible form of expression” [1, 1]. An original work of authorship is categorized as an independent, minimally creative output constructed by a person. The Copyright Office finds a work to be “fixed” when it is solidified in a relatively changeless medium. The medium qualifies as permanent so long as the copyrighted work is distinguishable, duplicatable, and communicable. From the instant that the “original work of authorship is fixed,” a creation becomes copyrighted [1]. 
-
-Copyrighted works created in and after 1978 last 70 years after the death of the claimant. For works authored by multiple actors, the claim lasts 70 years after the final death of the last remaining creator. For works created by employees as representatives of their companies, as well as for authors identifying under a pseudonym or anonymously, the copyright lasts for either 95 since a work’s inception or 120 years since publication. The shorter duration is chosen [1]. 
-
-There are various types of creations that are not protected by U.S. Copyright law. The U.S. Copyright Office states that “ideas, procedures, methods, systems, processes, concepts, principles,” and “discoveries” are not guarded by copyright [1, 2]. Additionally, a work must be fixed in a concrete manner. Moreover, works lacking minimal creativity are not considered for copyright. According to the U.S. Copyright Office, this includes “titles, names, short phrases, and slogans,” as well as “familiar symbols or designs” [1, 2]. Other works, including those that are “mere variations of typographic ornamentation, lettering, or coloring,” and those that are “listings of ingredients or contents,” will not be protected under U.S. copyright law [1, 2]. 
-
-Once copyright ownership is gained, the claimant has numerous rights over their work. Owners can recreate the product, generate new iterations of the original work, and sell or temporarily award ownership by means of various types of renting. Other ownership rights exist and depend on the type of work copyrighted [1].  
-
-When attempting to use a copyrighted work, it is best to ask for approval from the claimant. A copyright owner can grant permission to another individual to perform actions upon a copyrighted work that would normally be reserved solely for the claimant [1]. 
-
-
+While the U.S. Copyright Office keeps files on many different fields, search results were limited to those that were of type “Computer File,” as all OSS technology falls within that category. After the HTML files were downloaded, they were fed through a REGEX filter to move the data to a workable database. This resulted in a database with 47 variables and 110,652 observations. 
 
 ============================= DATA PROFILING ============================= 
-Initial Results
 First we looked at all 47 variables and measured their completeness (non- NA results)
 ```{r}
 plot_missing(data)
@@ -81,8 +74,7 @@ colSums(is.na(data))
 
 ```
 
-We then selected these variables, as they showed the most promise for being explanatorily useful
-## IS THERE SOMEWHERE TO GET MORE ACCURATE META-DATA (VARIABLE DESCRIPTIONS)?
+We then selected a subset of the variables, as they showed the most promise for being explanatorily useful in our task of measuring OSS innovation.
 1. application_title - title of the application, sometimes different from title
 2. title - the copyright title
 3. description - short text describing the copyright application
@@ -115,7 +107,7 @@ for (i in names(keep_data)) {
   print(paste(i,":",uni))
 }
 
-# Duplication -- none
+# Duplication:
 print(length(keep_data)-length(unique(keep_data[1:10])))
 
 # Validation
@@ -143,13 +135,16 @@ print(c)
 
 ```
 
+You can run any of the sections of code to see a readout of the data-profile variable of interest. Overall, some variables were more filled in than others; the least filled variable was previous registration with 70.57% of the observations lacking this field. The variables were mostly free-text response which made specific validation difficult, however an analysis was performed on the dates--most of which were accurate, finally, there were no duplicated rows in the database.
+
+
 ============================= SPLITTING INTO SECTORS =============================
 The copyright_claimant variable contains the name of the person or entity who had filed the copyright, from which we can infer the sectors these copyright files belong to. For example, claimant names which contain "company", "coorporation" or "Ltd" can be identified as from the business sector. We attempted to identify five sectors (business, government, non-profit, university, and individual) by detecting a series of string patterns. 
 We refined our method by modifying detection rules to increase matching records and avoid overlaps between sectors. Our result shows 81.06% of the 39,969 unique claimant names has been identified as in either of the five sectors.
 
 ```{r}
 cp_data <- data %>% select("copyright_claimant")%>%
-  unique()%>%
+  #unique()%>%
   mutate(business = str_detect(string = copyright_claimant,                        pattern ="(?i)(corp|.?com|llp|inc.j|corporation)\\.?$|(lc.|Group|Entertainment|Computing|Software)$|Service.*|Consulting|Consultants|Business|Laboratories|Technologies|Technology|Bank|Company|Studios|Solutions|inc.|l\\.?l\\.?c.?|ltd|employer|Systems|System|Limited|Publishing"))%>%
   mutate(nonprofit = str_detect(string=copyright_claimant,
                                pattern ="(?i)association|foundation|fund|board of realtors|assoc.|society|societies|organization|board") & business==FALSE)%>%
@@ -173,17 +168,26 @@ df
 
 ```
 
+Here are visualizations of the breakdowns, and the number of copyrights filed each year.
 ```{r}
 ggplot(df, aes(x = 2, y = pct, fill=sector)) +
     geom_bar(width = 1, stat = "identity", color = "white") +
     coord_polar("y",start = 0)+
     geom_text(aes(y = pct, label = paste0(round(pct,2),"%")), color = "white",position = position_stack(vjust = 0.5))+
     xlim(0.5, 2.5)
+
+year_match<-which(str_detect(data$date_of_creation,paste0("^(" , paste((seq(1987,2018,1)), collapse="|") , ")$")))
+df<-as.data.frame(table(data[year_match,]$date_of_creation))
+
+colnames(df)<-c("year","count")
+
+ggplot(data=df, aes(x=year, y=count)) + geom_bar(stat="identity")+theme_classic() + ggtitle("Number of copyrights by year")+ theme(plot.title = element_text(size=18,hjust = 0.5), axis.text.x = element_text(size=14, angle=90))
+
 ```
 
 
 ============================= VALIDATING THE SECTORS ============================= 
-To validate our code that splits the organizations into sectors, we randomly sampled the database, manually checked the organization name through internet searches, and compared the result to what was generated by our function. We used a random number generator to produce 50 numbers ranging between 1 and 39,969. We would then select that copyright information from the database to do our search. For the generated files our results matched.
+To validate our approach to split the claimaints into sectors, we randomly sampled the database, manually checked the organization name through internet searches, and compared the result to what was generated by our function. We used a random number generator to produce 50 numbers ranging between 1 and 39,969. We would then select that copyright claimaint's name from the database to do our search. 
 
 ```{r}
 set.seed(123)
@@ -209,15 +213,12 @@ The goal of this project is to identify OSI projects with copyright application.
 6. “Open Source” returns 124 rows, but many are simply reporting that they used open source, some did not (9 had OS in the title)
 7. R = 8, python = 1, android =6 (popular Open source platforms), none look like OSI
 
-These searches return a tiny subset of copyrights, totaling to ~55 total OSI files that were filed with the copyright office. 
+These searches return a tiny subset of copyrights, totaling to ~55 total OSI files that were filed with the copyright office over the 15 year period of interest. 
 
 ============================= CHALLENGES ============================= 
 -Open response text format makes categorizing the data difficult
 -naming conventions to split it into industries
 -Looking for OSS in the data reports very few results
-
-
-
 
 
 ============================= SUMMARY OF USEFULNESS ============================= 
