@@ -216,9 +216,13 @@ The goal of this project is to identify OSI projects with copyright application.
 These searches return a tiny subset of copyrights, totaling to ~55 total OSI files that were filed with the copyright office over the 15 year period of interest. 
 
 ============================= CHALLENGES ============================= 
--Open response text format makes categorizing the data difficult
--naming conventions to split it into industries
--Looking for OSS in the data reports very few results
+
+The team faced three major challenges when attempting to gather and analyze the data. 
+First, searching for OSS software within the data yielded very few results, as most claimants did not explicitly include “open source software,” “OSS,” or a variation of this phrase in the copyright title. Wihtout consistent listings of OSS, the current database fails to provide a complete overview of innovation with OSS.
+
+The second challenge involved the open response character format of the data. Most every variable was text response, making it difficult to categorize and statistically analyze the data. Therefore, the team was tasked with characterizing the data based on character and textual patterns within the dataset. This strategy resulted in the third challenge.  
+
+The final issue concerned attempts to categorize the copyright claimants. The team aimed to sort copyright claimants based on the sector in which they belonged. The five sectors are as follows: business, government, nonprofits, universities, and individuals. Although pattern recognition coding categorized more than 80% of the dataset based on words, symbols, and phrases seen across multiple claimants, a portion did not fit into any type of naming pattern. For example, a significant number of claimants filed a copyright claim under their first and last name. Because first and last names, as well as the length and number of words in a person’s name, varies from person to person, there was no blanket pattern by which every individual could be identified. Because of this challenge, thousands of claimants went unidentified. 
 
 
 ============================= SUMMARY OF USEFULNESS ============================= 
