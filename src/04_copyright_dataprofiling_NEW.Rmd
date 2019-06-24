@@ -1,8 +1,10 @@
 ---
 title: "Copyright Data Profiling"
 author: "Cong Cong"
-date: "2019-06-20"
-output: html_document
+date: '2019-06-20'
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -42,17 +44,17 @@ This technical document evaluates the feasibility of using copyright data from t
 ##Background 
 According to the U.S. Copyright Office, copyright is a “form of protection providing by the laws of the United States to the authors of ‘original works of authorship’ that are fixed in a tangible form of expression” [1, 1]. An original work of authorship is categorized as an independent, minimally creative output constructed by a person. The Copyright Office finds a work to be “fixed” when it is solidified in a relatively changeless medium. The medium qualifies as permanent so long as the copyrighted work is distinguishable, duplicatable, and communicable. From the instant that the “original work of authorship is fixed,” a creation becomes copyrighted [1]. 
 
-Copyrighted works created in and after 1978 last 70 years after the death of the claimant. For works authored by multiple actors, the claim lasts 70 years after the final death of the last remaining creator. For works created by employees as representatives of their companies, as well as for authors identifying under a pseudonym or anonymously, the copyright lasts for either 95 since a work’s inception or 120 years since publication. The shorter duration is chosen [1]. 
+A copyright created in and after 1978 last 70 years after the death of the claimant. For works authored by multiple actors, the claim lasts 70 years after the death of the last remaining creator. For works created by employees as representatives of their companies, as well as for authors identifying under a pseudonym or anonymously, the copyright lasts for either 95 years since a work’s inception or 120 years since publication. The shorter duration is chosen [1]. 
 
-There are various types of creations that are not protected by U.S. Copyright law. The U.S. Copyright Office states that “ideas, procedures, methods, systems, processes, concepts, principles,” and “discoveries” are not guarded by copyright [1, 2]. Additionally, a work must be fixed in a concrete manner. Moreover, works lacking minimal creativity are not considered for copyright. According to the U.S. Copyright Office, this includes “titles, names, short phrases, and slogans,” as well as “familiar symbols or designs” [1, 2]. Other works, including those that are “mere variations of typographic ornamentation, lettering, or coloring,” and those that are “listings of ingredients or contents,” will not be protected under U.S. copyright law [1, 2]. 
+There are various types of creations that are not protected by U.S. Copyright law. The U.S. Copyright Office states that “ideas, procedures, methods, systems, processes, concepts, principles,” and “discoveries” are not guarded by copyright [1, 2]. Additionally, a work must be fixed in a concrete manner. Moreover, works lacking minimal creativity are not considered for copyright. According to the U.S. Copyright Office, this includes “titles, names, short phrases, and slogans,” as well as “familiar symbols or designs” [1, 2]. Other works, including those that are “mere variations of typographic ornamentation, lettering, or coloring,” and those that are “listings of ingredients or contents,” are not protected under U.S. copyright law [1, 2]. 
 
-Once copyright ownership is gained, the claimant has numerous rights over their work. Owners can recreate the product, generate new iterations of the original work, and sell or temporarily award ownership by means of various types of renting. Other ownership rights exist and depend on the type of work copyrighted [1].  
+Once copyright ownership is gained, the claimant has numerous rights over his or her work. Owners can recreate the product, generate new iterations of the original work, and sell or temporarily award ownership by means of various types of renting. Other ownership rights exist and depend on the type of work copyrighted [1].  
 
 When attempting to use a copyrighted work, it is best to ask for approval from the claimant. A copyright owner can grant permission to another individual to perform actions upon a copyrighted work that would normally be reserved solely for the claimant [1]. 
 
 ##Data Source Overview: 
 ###Data Source: 
-All copyrights filed through the U.S. Copyright Office with the U.S. Library of Congress are publicly available via an online catalog. These files are stored in HTML format with and can be accessed at a maximum of 10,000 records per search. There is currently no bulk download functionality for these files, so we developed a web-scraping strategy to access the files. We used the following approach to guide our progress: 
+All copyrights filed through the U.S. Copyright Office with the U.S. Library of Congress are publicly available via an online catalog. These files are stored in HTML format and can be accessed at a maximum of 10,000 records per search. There is currently no bulk download functionality for these files, so we developed a web-scraping strategy to access the files. We used the following approach to guide our progress: 
 
 1. Use RSelenium to cache options that use JavaScript (date, document type) 
 
@@ -89,7 +91,7 @@ We then selected a subset of the variables, as they showed the most promise for 
 These ten variables were profiled to determine the data quality and usability on the following metrics:
 •	Completeness - completeness is a variable metric, the metric is a percentage, the number of observations that have values compared to the number of observations that “should” have values.
 •	Value validity - value validity is a variable metric, data elements with proper values have value validity; the metric is the percentage of data elements whose attributes possess values within the range expected for a legitimate entry. 
-•	Consistency - consistency is a variable metric, it is the degree of logical agreement between variable values. The rules that specify the logical relationships between the entity values are called dependency constraints. A simple example of a dependency constraint violation would be a location disagreement, a zip-code that does not agree with a state code. 
+•	Consistency - consistency is a variable metric, it is the degree of logical agreement between variable values. The rules that specify the logical relationships between the entity values are called dependency constraints. A simple example of a dependency constraint violation would be a location disagreement, such as a zip-code that does not agree with a state code. 
 •	Uniqueness - uniqueness is a variable metric, it is the number of unique valid values that have been entered for a variable.
 •	Duplication - duplication is a data set metric, it is the degree of replication of distinct observations per observation unit type; the metric is the percentage of observations in a data set that are duplicated.
 
@@ -135,12 +137,13 @@ print(c)
 
 ```
 
-You can run any of the sections of code to see a readout of the data-profile variable of interest. Overall, some variables were more filled in than others; the least filled variable was previous registration with 70.57% of the observations lacking this field. The variables were mostly free-text response which made specific validation difficult, however an analysis was performed on the dates--most of which were accurate, finally, there were no duplicated rows in the database.
+You can run any of the sections of code to see a readout of the data-profile variable of interest. Overall, some variables were more filled in than others; the least filled variable was previous registration with 70.57% of the observations lacking this field. The variables were mostly free-text response which made specific validation difficult; however an analysis was performed on the dates, most of which were accurate. Lastly, there were no duplicated rows in the database.
 
 
 ============================= SPLITTING INTO SECTORS =============================
 The copyright_claimant variable contains the name of the person or entity who had filed the copyright, from which we can infer the sectors these copyright files belong to. For example, claimant names which contain "company", "coorporation" or "Ltd" can be identified as from the business sector. We attempted to identify five sectors (business, government, non-profit, university, and individual) by detecting a series of string patterns. 
-We refined our method by modifying detection rules to increase matching records and avoid overlaps between sectors. Our result shows 81.06% of the 39,969 unique claimant names has been identified as in either of the five sectors.
+
+We refined our method by modifying detection rules to increase matching records and avoid overlaps between sectors. Our result shows that 81.06% of the 39,969 unique claimant names have been identified as in either of the five sectors.
 
 ```{r}
 cp_data <- data %>% select("copyright_claimant")%>%
@@ -202,29 +205,32 @@ of (.835,.987) for the accuracy of our computer program at classifying the copyr
 
 
 
-============================= OSI in the trademark data ============================= 
-The goal of this project is to identify OSI projects with copyright application. In attempting to find such OSI projects within the Trademarks over the past 19 years, I performed a number of queries on the database. Each of these are keywords associated with Open source software.
+============================= OSI IN THE TRADEMARK DATA ============================= 
+The goal of this project is to identify OSI projects with copyright application. In attempting to find such OSI projects within the Trademarks over the past 19 years, the team performed a number of queries on the database. Each of these are keywords associated with Open source software.
 
 1. GNU (projects often associated with OSI), returned 34 results, mostly from the Free Software Foundation 2002-2004.
-2. GPI (General Public Lisence), returned 8 results, 7 of which seemed to be related to publically available files.
-3. MIT, APACHE (common open source liscenses) both have several hundred results with no clear indicators of public liscence.
-4. BSD (another open source liscence), returned 13 results, with 5 reasonably being a BSD open source license.
-5. Public, 1240 results with no clear OSI indicators, though few if any seem OSI
-6. “Open Source” returns 124 rows, but many are simply reporting that they used open source, some did not (9 had OS in the title)
-7. R = 8, python = 1, android =6 (popular Open source platforms), none look like OSI
+2. GPI (General Public License), returned 8 results, 7 of which seemed to be related to publically available files.
+3. MIT, APACHE (common open source licenses) both have several hundred results with no clear indicators of public license.
+4. BSD (another open source license), returned 13 results, with 5 reasonably being a BSD open source license.
+5. Public returned 1240 results with no clear OSI indicators, though few, if any, seem like OSI.
+6. “Open Source” returns 124 rows, but many are simply reporting that they used open source, even though some did not (9 had OS in the title).
+7. R returned 8 results, python returned 1, and android returned 6 (popular Open source platforms), but none looked like OSI.
 
-These searches return a tiny subset of copyrights, totaling to ~55 total OSI files that were filed with the copyright office over the 15 year period of interest. 
+These searches returned a tiny subset of copyrights, totaling to ~55 total OSI files that were filed with the copyright office over the 15 year period of interest. 
 
 ============================= CHALLENGES ============================= 
 
 The team faced three major challenges when attempting to gather and analyze the data. 
-First, searching for OSS software within the data yielded very few results, as most claimants did not explicitly include “open source software,” “OSS,” or a variation of this phrase in the copyright title. Wihtout consistent listings of OSS, the current database fails to provide a complete overview of innovation with OSS.
+First, searching for OSS software within the data yielded very few results, as most claimants did not explicitly include “open source software,” “OSS,” or a variation of this phrase in the copyright title. Without consistent listings of OSS, the current database fails to provide a complete overview of innovation with OSS.
 
 The second challenge involved the open response character format of the data. Most every variable was text response, making it difficult to categorize and statistically analyze the data. Therefore, the team was tasked with characterizing the data based on character and textual patterns within the dataset. This strategy resulted in the third challenge.  
 
-The final issue concerned attempts to categorize the copyright claimants. The team aimed to sort copyright claimants based on the sector in which they belonged. The five sectors are as follows: business, government, nonprofits, universities, and individuals. Although pattern recognition coding categorized more than 80% of the dataset based on words, symbols, and phrases seen across multiple claimants, a portion did not fit into any type of naming pattern. For example, a significant number of claimants filed a copyright claim under their first and last name. Because first and last names, as well as the length and number of words in a person’s name, varies from person to person, there was no blanket pattern by which every individual could be identified. Because of this challenge, thousands of claimants went unidentified. 
+The final issue concerned attempts to categorize the copyright claimants. The team aimed to sort copyright claimants based on the sector in which they belonged. The five sectors are as follows: business, government, nonprofits, universities, and individuals. Although pattern recognition coding categorized more than 80% of the dataset based on words, symbols, and phrases seen across multiple claimants, a portion did not fit into any type of naming pattern. For example, a significant number of claimants filed a copyright claim under their first and last name. Because first and last names, as well as the length and number of words in any given person’s name, varies from person to person, there was no blanket pattern by which every individual could be identified. Because of this challenge, thousands of claimants went unidentified. 
 
 
 ============================= SUMMARY OF USEFULNESS =============================
 
-The copyright data has a number of uses, though does not shed light on the amount of Open Source Software generated over time. As this document demonstrates, the data collected can be used to identify the number of copyrights for technical software by different inteties (corporation, government, individual, educational, non-profit). It can also be used to track the amount of software copyrights filed over time, which may indicate changing norms with copyrights for emerging fields. However, the public nature of OSS seems to result in only a marginal number of OS softwares filing copyrights with the government, a finding that makes intuitive sense because of the lack of incentive that comes with OSS. As such, there were very few OSS identified in the set and the data do not prove useful to create a metric for OSS.
+The copyright data has a number of uses, though does not shed light on the amount of Open Source Software generated over time. As this document demonstrates, the data collected can be used to identify the number of copyrights for technical software by different intities (corporation, government, individual, educational, non-profit). It can also be used to track the amount of software copyrights filed over time, which may indicate changing copyright norms within emerging fields. However, the public nature of OSS seems to result in only a marginal number of OS software copyrights filed with the government, a finding that makes intuitive sense because of the lack of incentives that come with OSS. As such, the team identified a limited number of open source software in the set and the data does not prove useful to create a metric for OSS.
+
+==================================== SOURCES =====================================
+1. https://www.copyright.gov/circs/circ01.pdf 
