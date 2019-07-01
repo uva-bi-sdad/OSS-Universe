@@ -3,58 +3,74 @@ library("ghql")
 library("jsonlite")
 library("httr")
 
-token <- '963108f94c445eb2e50587013c0356bfce308ff1'
+# Initializing client
+token <- Sys.getenv("GITHUB_GRAPHQL_TOKEN")
+
 cli <- GraphqlClient$new(
   url = "https://api.github.com/graphql",
   headers = add_headers(Authorization = paste0("Bearer ", token))
 )
 
+# Since not every GraphQL server has a schema at the base URL, have to manually load the schema in this case
 cli$load_schema()
+
+# Make a Query class object
 qry <- Query$new()
 
-qry$query('getmydata','{
-          rateLimit {
-          cost
-          remaining
-          resetAt
-          }
-          search(query: "license:mit", type: REPOSITORY,first:100,after:"Y3Vyc29yOjEwMA==") {
-          repositoryCount
-          pageInfo {
-          endCursor
-          startCursor
-          hasNextPage
-          }
-          edges {
-          node {
-          ... on Repository {
-          owner {
-          login
-          }
-          name
-          }
-          }
-          }
-          }
+# Make the initial query of the first 100 records
+qry$query('getmydata',
+          '{
+            rateLimit {
+              cost
+              remaining
+              resetAt
+            }
+            search(query: "license:mit", type: REPOSITORY, first : 100) {
+              repositoryCount
+              pageInfo {
+                endCursor
+                startCursor
+                hasNextPage
+              }
+              edges {
+                node {
+                  ... on Repository {
+                    owner {
+                      login
+                    }
+                    name
+                  }
+                }
+              }
+            }
           }')
 
 
-resp <- cli$exec(qry$queries$getmydata)
+# Parse the result
+result <- jsonlite::fromJSON(cli$exec(qry$queries$getmydata))
 
-fj <- jsonlite::fromJSON(resp)
+# Get the first 100 repository names
+result$data$search$edges$node$name
 
-fj$data$search$edges$node$name
+# Get the end cursor
+result$data$search$pageInfo$endCursor
 
+# If 400 bad request
+# If zero result
 
-fj$data$search$pageInfo$endCursor
-
-while (fj$data$repository$issues$pageInfo$hasNextPage) {
+while (result$data$search$pageInfo$hasNextPage) {
 
   qry$queries$getissues$query <- sprintf(getIssues, cursor)
   q <- cli$exec(qry$queries$getissues)
   cursor <- q$data$repository$issues$pageInfo$endCursor
   issues <- c(issues, q$data$repository$issues$edges$node$number)
 }
+
+
+
+
+
+
 
 
 
