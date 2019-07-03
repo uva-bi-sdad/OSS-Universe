@@ -49,21 +49,49 @@ qry$query('getmydata',
 # Parse the result
 result <- jsonlite::fromJSON(cli$exec(qry$queries$getmydata))
 
-# Get the first 100 repository names
-result$data$search$edges$node$name
-
-# Get the end cursor
-result$data$search$pageInfo$endCursor
 
 # If 400 bad request
 # If zero result
 
-while (result$data$search$pageInfo$hasNextPage) {
+# If 200 OK
+# Get the first 100 repository names
+output <- data.frame(result$data$search$edges$node$name)
 
-  qry$queries$getissues$query <- sprintf(getIssues, cursor)
-  q <- cli$exec(qry$queries$getissues)
-  cursor <- q$data$repository$issues$pageInfo$endCursor
-  issues <- c(issues, q$data$repository$issues$edges$node$number)
+
+while (result$data$search$pageInfo$hasNextPage) {
+  # Get the end cursor
+  nextpage <- result$data$search$pageInfo$endCursor
+
+  qry$query('getmydata',
+            '{
+              rateLimit {
+                cost
+                remaining
+                resetAt
+              }
+              search(query: "license:mit", type: REPOSITORY, first: 100, after: nextpage) {
+                repositoryCount
+                pageInfo {
+                  endCursor
+                  startCursor
+                  hasNextPage
+                }
+                edges {
+                  node {
+                    ... on Repository {
+                      owner {
+                        login
+                      }
+                      name
+                    }
+                  }
+                }
+              }
+            }')
+  
+  output <- rbind.data.frame(output, data.frame(result$data$search$edges$node$name))
+    
+ 
 }
 
 
