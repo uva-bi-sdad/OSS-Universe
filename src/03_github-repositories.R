@@ -1,7 +1,9 @@
 #devtools::install_github("ropensci/ghql")
-library("ghql")
-library("jsonlite")
-library("httr")
+library(ghql)
+library(jsonlite)
+library(httr)
+library(stringr)
+library(data.table)
 
 # Initializing client
 token <- Sys.getenv("GITHUB_GRAPHQL_TOKEN")
@@ -14,18 +16,20 @@ cli <- GraphqlClient$new(
 # Since not every GraphQL server has a schema at the base URL, have to manually load the schema in this case
 cli$load_schema()
 
-# Make a Query class object
-qry <- Query$new()
+search_by_license <- function(license_name) {
+  
+  # Make a Query class object
+  qry <- Query$new()
 
-# Make the initial query of the first 100 records
-qry$query('getmydata',
-          '{
+  # Make the initial query of the first 100 records
+  qry$query('getmydata',str_interp(
+         '{
             rateLimit {
               cost
               remaining
               resetAt
             }
-            search(query: "license:mit", type: REPOSITORY, first : 100) {
+            search(query: "license:${license_name}", type: REPOSITORY, first : 100) {
               repositoryCount
               pageInfo {
                 endCursor
@@ -35,6 +39,7 @@ qry$query('getmydata',
               edges {
                 node {
                   ... on Repository {
+
                     owner {
                       login
                     }
@@ -43,33 +48,30 @@ qry$query('getmydata',
                 }
               }
             }
-          }')
+          }'))
 
 
-# Parse the result
-result <- jsonlite::fromJSON(cli$exec(qry$queries$getmydata))
+  # Parse the result
+  result <- jsonlite::fromJSON(cli$exec(qry$queries$getmydata))
 
-
-# If 400 bad request
-# If zero result
-
-# If 200 OK
-# Get the first 100 repository names
-output <- data.frame(result$data$search$edges$node$name)
-
-
-while (result$data$search$pageInfo$hasNextPage) {
+  if (is.null(result$data)) {
+    return(value = str_interp(string = "License ${license_name} has 0 count."))
+  } 
+  
+  count <- result$data$search$repositoryCount
+  output <- data.table(result$data$search$edges$node$name)
+  nextpage <- result$data$search$pageInfo$hasNextPage
+  
+  while (nextpage) {
   # Get the end cursor
-  nextpage <- result$data$search$pageInfo$endCursor
-
-  qry$query('getmydata',
-            '{
+  cursor <- result$data$search$pageInfo$endCursor
+  qry_string <- str_interp('{
               rateLimit {
                 cost
                 remaining
                 resetAt
               }
-              search(query: "license:mit", type: REPOSITORY, first: 100, after: nextpage) {
+              search(query: "license:${license_name}", type: REPOSITORY, first: 100, after: ${cursor}) {
                 repositoryCount
                 pageInfo {
                   endCursor
@@ -88,12 +90,26 @@ while (result$data$search$pageInfo$hasNextPage) {
                 }
               }
             }')
+  qry <- Query$new()
+  qry$query('getmydata', qry_string)         
   
-  output <- rbind.data.frame(output, data.frame(result$data$search$edges$node$name))
-    
- 
+  result <- jsonlite::fromJSON(cli$exec(qry$queries$getmydata))
+  output <- rbind(output, data.table(result$data$search$edges$node$name))
+  nextpage <- result$data$search$pageInfo$hasNextPage
+  
+  if (result$data$rateLimit$remaining == 1){
+    while (Sys.time() < result$data$rateLimit$resetAt) {
+      Sys.sleep(3600)
+    }
+  }
+  }
+  
+  print(str_interp("License ${license_name} has ${count} counts"))
+  output
 }
 
+
+search_by_license("ISC")
 
 
 
