@@ -139,7 +139,7 @@ if (count <= 110){
   
   if (result$data$rateLimit$remaining == 1){
     while (Sys.time() < result$data$rateLimit$resetAt) {
-      Sys.sleep(3600)
+      Sys.sleep(60)
     }
   }
   }
@@ -205,7 +205,7 @@ if (count > 110 & count <= 1000){
   
   if (result$data$rateLimit$remaining == 1){
     while (Sys.time() < result$data$rateLimit$resetAt) {
-      Sys.sleep(3600)
+      Sys.sleep(60)
     }
   }
   }
