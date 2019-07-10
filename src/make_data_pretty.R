@@ -1,4 +1,18 @@
-queryDat = "2010-01-01"
+# Function: MakePretty
+# Calvin Isch
+# 2019-07-10
+#
+# Function Description:
+# Given queried info from github, and the date that the query was for, returns a list of four tables
+# 1. QueryTable -- a table with query specific info
+# 2. RepoTable -- a table with information about each repository returned by the query
+# 3. CommitTable -- a table with information about all of the commits to all repositories
+# 4. AuthorTable -- a table with info about the authors who created the commits
+# 
+# These tables are related as follows: 
+# QueryTable has a 1 to many relationship with RepoTable via variable date,
+# RepoTable has a 1 to many relationship with CommitTable via repoName,
+# CommitTable has a 1 to 1 relationship with AuthorTable via authorID
 
 makePretty <- function(res,queryDate) {
   
@@ -20,7 +34,7 @@ makePretty <- function(res,queryDate) {
   
   # Creates a data table with the repository-specific information
   allRepos <- data.table(
-    name = as.data.table(result2$data[2])[[3,1]][[1]],
+    repoName = as.data.table(result2$data[2])[[3,1]][[1]],
     owner = as.data.table(result2$data[2])[[3,1]][[2]],
     defBranch = repoInfo$name,
     numCommits = repoInfo$target$history$totalCount,
@@ -41,13 +55,14 @@ makePretty <- function(res,queryDate) {
     currentRepo <- data.table(
       authorId = commitHistory[[2]]$history$nodes[[i]]$author$user$id,
       additions = commitHistory[[2]]$history$nodes[[i]]$additions,
-      deletions = commitHistory[[2]]$history$nodes[[i]]$deletions
-      # We also want to get 1. Repo Name 2. Date
+      deletions = commitHistory[[2]]$history$nodes[[i]]$deletions,
+      repoName = as.data.table(result2$data[2])[[3,1]][[1]]
+      # We also want to get  2. Date
     )
     
     currentAuthor <- data.table(
       email = commitHistory[[2]]$history$nodes[[i]]$author$email,
-      id = commitHistory[[2]]$history$nodes[[i]]$author$user$id
+      authorId = commitHistory[[2]]$history$nodes[[i]]$author$user$id
       # Also want 1. Organization 2. Login 3. Company
     )
     
