@@ -3,7 +3,7 @@
 # 2019-07-10
 #
 # Function Description:
-# Given queried info from github, and the date that the query was for, returns a list of four tables
+# Given queried info from github and the date that the query was for, returns a list of four tables
 # 1. QueryTable -- a table with query specific info
 # 2. RepoTable -- a table with information about each repository returned by the query
 # 3. CommitTable -- a table with information about all of the commits to all repositories
@@ -65,3 +65,4 @@ makePretty <- function(res,queryDate) {
   
   return(list(allQueries,allRepos,allCommits, allAuthors))
 }
+
