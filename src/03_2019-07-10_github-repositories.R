@@ -87,6 +87,7 @@ qry_initial <- str_interp('{
 
 qry <- Query$new()
 qry$query('getmydata',qry_initial)
+
 result <- jsonlite::fromJSON(cli$exec(qry$queries$getmydata))
 count <- result$data$search$repositoryCount
 
@@ -166,6 +167,7 @@ if (count <= 1000){
     output <- mapply(c, output, as.list(result$data$search$nodes), SIMPLIFY=FALSE)
     #dt <- cbind(dt,data.table(output$name,output$owner$login,output$createdAt,output$updatedAt,output$defaultBranchRef$target$history))
     nextpage <- result$data$search$pageInfo$hasNextPage
+    
     if (result$data$rateLimit$remaining == 1){
     while (Sys.time() < result$data$rateLimit$resetAt) {
       Sys.sleep(60)
@@ -173,7 +175,7 @@ if (count <= 1000){
     }
   }#END OF WHILE
   
-  print(str_interp("License mit has ${count} counts"))
+  print(str_interp("License mit at ${intervals[i]} has ${count} counts"))
   
 }
 
