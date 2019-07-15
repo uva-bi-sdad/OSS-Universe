@@ -1,0 +1,86 @@
+---
+title: "GitHub Webscraping"
+author: "José Bayoán Santiago Calderón"
+date: "2019-06-15"
+output: html_document
+---
+  
+  ```{r setup, include=FALSE}
+knitr::opts_knit$set(echo = TRUE)
+```
+
+
+```{r Housekeeping, message=FALSE}
+# Housekeeping ----
+for (pkg in c("RPostgreSQL", "assertthat", "lubridate", "stringr", "RSelenium",
+              "purrr", "maditr")) {
+  library(pkg, character.only = TRUE)
+}
+# Initiate Web Driver ----
+remDr <- remoteDriver(remoteServerAddr = "selenium_chrome", browserName = "chrome")
+```
+
+```{r}
+parse_github_contributions <- function(remDr, slug) {
+  slug <- "JuliaLang/julia"
+  remDr$open(silent = TRUE)
+  "https://github.com/${slug}/graphs/contributors" %>%
+    str_interp() %>%
+    remDr$navigate()
+  remDr$setImplicitWaitTimeout()
+  remDr$setImplicitWaitTimeout()
+  relevant_dates <- remDr$findElement(using = "xpath",
+                                   value = '//*[@id="js-repo-pjax-container"]/div[2]/div[1]/div/div[2]/div[1]/div/h2') %>%
+    (function(x) x$getElementText()[[1L]]) %>%
+    str_extract_all(pattern = "\\p{L}{3} \\d+, \\d+") %>%
+    unlist() %>%
+    as_date(format = "%b %d, %Y", tz = "UTC") %>%
+    as.character()
+  login <- remDr$findElements(using = "css",
+                          value = "#contributors > ol > li > span > h3 > a.text-normal") %>%
+    map_chr(.f = function(x) x$getElementText() %>% getElement(name = 1L))
+  commits <- remDr$findElements(using = "css",
+                          value = "#contributors > ol > li > span > h3 > span.f6.d-block.text-gray-light > span > a") %>%
+    map_int(.f = function(x) x$getElementText() %>% getElement(name = 1L) %>%
+              str_remove_all(pattern = ",") %>%
+              str_extract(pattern = "\\d+") %>%
+              as.integer())
+  adds <- remDr$findElements(using = "css",
+                          value = "#contributors > ol > li > span > h3 > span.f6.d-block.text-gray-light > span > span.text-green.text-normal") %>%
+    map_int(.f = function(x) x$getElementText() %>% getElement(name = 1L) %>%
+              str_remove_all(pattern = ",") %>%
+              str_extract(pattern = "\\d+") %>%
+              as.integer())
+  dels <- remDr$findElements(using = "css",
+                          value = "#contributors > ol > li > span > h3 > span.f6.d-block.text-gray-light > span > span.text-red.text-normal") %>%
+    map_int(.f = function(x) x$getElementText() %>% getElement(name = 1L) %>%
+              str_remove_all(pattern = ",") %>%
+              str_extract(pattern = "\\d+") %>%
+              as.integer())
+  value = data.table(login = login,
+                     slug = slug,
+                     commits = commits,
+                     adds = adds,
+                     dels = dels,
+                     created_on = relevant_dates[1L],
+                     last_updated = relevant_dates[2L])
+  conn <- dbConnect(drv = PostgreSQL(),
+                    dbname = "oss",
+                    host = "db",
+                    port = 5432L,
+                    user = Sys.getenv("db_userid"),
+                    password = Sys.getenv("db_pwd"))
+  dbWriteTable(conn = conn,
+               name = c(schema = "universe", name = "contributions"),
+               value = value,
+               row.names = FALSE,
+               append = TRUE)
+  on.exit(expr = remDr$closeall())
+  on.exit(expr = dbDisconnect(conn = conn))
+}
+```
+
+```{r}
+parse_github_contributions(remDr = remDr,
+                           slug = "JuliaLang/julia")
+```

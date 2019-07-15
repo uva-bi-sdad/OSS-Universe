@@ -1,12 +1,12 @@
-#devtools::install_github("ropensci/ghql")
+# devtools::install_github("ropensci/ghql")
 library(ghql)
 library(jsonlite)
 library(httr)
 library(stringr)
-library(data.table)
+library(maditr)
 
 # Initializing client
-token <- Sys.getenv("GITHUB_GRAPHQL_TOKEN")
+token <- Sys.getenv("github_personal_token")
 
 cli <- GraphqlClient$new(
   url = "https://api.github.com/graphql",
@@ -22,7 +22,7 @@ search_by_license <- function(license_name) {
   qry <- Query$new()
 
   # Make the initial query of the first 100 records
-  qry$query('getmydata',str_interp(
+  qry$query("getmydata", str_interp(
          '{
             rateLimit {
               cost
@@ -39,7 +39,6 @@ search_by_license <- function(license_name) {
               edges {
                 node {
                   ... on Repository {
-
                     owner {
                       login
                     }
@@ -50,9 +49,8 @@ search_by_license <- function(license_name) {
             }
           }'))
 
-
   # Parse the result
-  result <- jsonlite::fromJSON(cli$exec(qry$queries$getmydata))
+  result <- fromJSON(txt = cli$exec(qry$queries$getmydata))
 
   if (is.null(result$data)) {
     return(value = str_interp(string = "License ${license_name} has 0 count."))
