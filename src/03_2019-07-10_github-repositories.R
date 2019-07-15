@@ -27,14 +27,14 @@ cli$load_schema()
 
 finallist <- list()
 
-for (i in 1:length(intervals)){
+for (i in 3:3){
 qry_initial <- str_interp('{
   rateLimit {
     cost
     remaining
     resetAt
   }
-  search(query: "license:mit created:${intervals[i]}", type: REPOSITORY, first: 10) {
+  search(query: "license:mit created:${intervals[i]}", type: REPOSITORY, first: 100) {
     repositoryCount
     pageInfo {
       endCursor
@@ -47,37 +47,8 @@ qry_initial <- str_interp('{
         owner{
           login
         }
-        createdAt
-        updatedAt
-        defaultBranchRef {
-          name
-          target {
-            ... on Commit {
-              history {
-                totalCount
-                pageInfo {
-                  startCursor
-                  endCursor
-                  hasNextPage
-                }
-                nodes {
-                  author {
-                    email
-                    user {
-                      company
-                      location
-                      organizations(first: 1) {
-                        totalCount
-                      }
-                    }
-                  }
-                  additions
-                  deletions
-                  authoredDate
-                }
-              }
-            }
-          }
+        licenseInfo{
+          spdxId
         }
       }
     }
@@ -87,6 +58,7 @@ qry_initial <- str_interp('{
 
 qry <- Query$new()
 qry$query('getmydata',qry_initial)
+
 result <- jsonlite::fromJSON(cli$exec(qry$queries$getmydata))
 count <- result$data$search$repositoryCount
 
@@ -101,6 +73,7 @@ if (count <= 1000){
   #dt <- data.table(output$name,output$owner$login,output$createdAt,output$updatedAt,output$defaultBranchRef$target$history)
   nextpage <- result$data$search$pageInfo$hasNextPage
   while (nextpage) {
+    #Sys.sleep(10)
     # Get the end cursor
     cursor <- result$data$search$pageInfo$endCursor
     qry_after <- str_interp('{
@@ -109,7 +82,7 @@ if (count <= 1000){
         remaining
         resetAt
       }
-      search(query: "license:mit created:${intervals[i]}", type: REPOSITORY, first: 10, after:"${cursor}") {
+      search(query: "license:mit created:${intervals[i]}", type: REPOSITORY, first:100, after:"${cursor}") {
         repositoryCount
         pageInfo {
           endCursor
@@ -122,38 +95,8 @@ if (count <= 1000){
           owner{
             login
           }
-          createdAt
-          updatedAt
-            defaultBranchRef {
-              name
-              target {
-                ... on Commit {
-                  history {
-                    totalCount
-                    pageInfo {
-                      startCursor
-                      endCursor
-                      hasNextPage
-                    }
-                    nodes {
-                      author {
-                        email
-                        user {
-                          company
-                          location
-                          organizations(first: 1) {
-                            totalCount
-                          }
-                        }
-                      }
-                      additions
-                      deletions
-                      authoredDate
-                    }
-                  }
-                }
-              }
-            }
+          licenseInfo {
+            spdxId
           }
         }
       }
@@ -166,14 +109,12 @@ if (count <= 1000){
     output <- mapply(c, output, as.list(result$data$search$nodes), SIMPLIFY=FALSE)
     #dt <- cbind(dt,data.table(output$name,output$owner$login,output$createdAt,output$updatedAt,output$defaultBranchRef$target$history))
     nextpage <- result$data$search$pageInfo$hasNextPage
-    if (result$data$rateLimit$remaining == 1){
-    while (Sys.time() < result$data$rateLimit$resetAt) {
-      Sys.sleep(60)
-    }
-    }
+    
+    
+    
   }#END OF WHILE
   
-  print(str_interp("License mit has ${count} counts"))
+  print(str_interp("License mit at ${intervals[i]} has ${count} counts"))
   
 }
 
@@ -184,3 +125,6 @@ if (count >  1000){
 
 finallist <- append(finallist,output)
 }
+
+
+
