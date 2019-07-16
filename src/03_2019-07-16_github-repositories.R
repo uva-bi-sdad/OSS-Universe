@@ -6,17 +6,23 @@ library(stringr)
 library(data.table)
 library(lubridate)
 library(stringr)
+library(RPostgreSQL)
 
+# Make time intervals
+period_length <- 30L
 start_date <- seq.Date(from = as_date(x = "2008-01-01"),
                        to = as_date(x = "2010-02-28"),
-                       by = 30L)
-intervals <- str_c(start_date, "..", start_date + days(x = 29L))
+                       by = period_length)
+intervals <- str_c(start_date, "..", start_date + days(x = period_length-1))
+
+
 
 ##THIS IS FOR DATE&TIME##
-#start_hour <- seq.POSIXt(from=as_datetime("2018-08-28 12:30:00"), 
-                         #to=as_datetime("2018-08-28 18:30:00"),by=3600*2)
-#intervals <- str_c(start_hour, "..", start_hour + hours(2))
+#start_hour <- seq.POSIXt(from=as_datetime("2016-07-15 00:00:00"), 
+                        # to=as_datetime("2016-07-18 23:59:00"),by=3600*6)
+#intervals <- str_c(start_hour, "..", start_hour + hours(6))
 #intervals <- str_replace_all(intervals ," ","T")
+##=====================##
 
 
 # Initializing client
@@ -119,7 +125,7 @@ for (i in 1:length(intervals)){
   
   
   if (count >  1000){
-    return(value = str_interp(string = str_interp("License mit at ${intervals[i]} has more than 1000 count.")))
+    return(value = str_interp(string = str_interp("##### ${intervals[i]} has more than 1000 count #####")))
   }
   
   output[[4]] <- as.list(rep(intervals[i],length(output$name)))
@@ -129,7 +135,7 @@ for (i in 1:length(intervals)){
 # Make the final dateframe
 out_df <- data.frame(t(sapply(out_list,c)))
 out_df <- data.table(time = unlist(out_df$V4),
-                  reponame = unlist(out_df$name), owner = unlist(out_df$owner),
+                  reponame = unlist(out_df$name), login = unlist(out_df$owner),
                   license = unlist(out_df$licenseInfo))
 
 # Write into the database
@@ -140,12 +146,11 @@ reponames_to_bd <- function() {
                     port = 5432L,
                     user = Sys.getenv("db_userid"),
                     password = Sys.getenv("db_pwd"))
-  if (dbExistsTable(conn = conn, name = c(schema = "universe", name = "reponames"))) {
-    dbRemoveTable(conn = conn, name = c(schema = "universe", name = "reponames"))
-  }
+
   dbWriteTable(conn = conn,
                name = c(schema = "universe", name = "reponames"),
                value = out_df,
+               append = TRUE,
                row.names = FALSE)
   on.exit(expr = dbDisconnect(conn = conn))
 }
