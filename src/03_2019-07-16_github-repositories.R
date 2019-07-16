@@ -8,21 +8,40 @@ library(lubridate)
 library(stringr)
 library(RPostgreSQL)
 
-# Make time intervals
-period_length <- 30L
-start_date <- seq.Date(from = as_date(x = "2008-01-01"),
-                       to = as_date(x = "2010-02-28"),
-                       by = period_length)
-intervals <- str_c(start_date, "..", start_date + days(x = period_length-1))
+# Run the two functions that make intervals for dates and time
+find_date_intervals <- function(startdate,enddate,length){ 
+  start_date <- as_date(x = startdate)
+  end_date <- as_date(x = enddate)
+  period_length <- length
+  num_interval <- as.integer(ceiling(difftime(end_date,start_date)/period_length))
+  dates <- seq.Date(from = start_date,
+                    to = end_date,
+                    length.out = num_interval)
+  len <- length(x = dates) - 1L
+  start_dates <- dates[1:len]
+  end_dates <- dates[-1L] - days()
+  end_dates[len] <- end_date
+  str_c(start_dates, "..", end_dates)
+}
 
+find_time_intervals <- function(starttime,endtime,hour){
+  start_time <- as_datetime(x = starttime)
+  end_time <- as_datetime(x = endtime)
+  period_length <- hour
+  num_interval <- as.integer(ceiling(difftime(end_time,start_time)*24))
+  times <- seq.POSIXt(from = start_time,
+                    to = end_time,
+                    length.out = num_interval)
+  len <- length(x = times) - 1L
+  start_times <- times[1:len]
+  end_times <- times[-1L] - minutes()
+  end_times[len] <- end_time
+  str_c(start_times, "..", end_times)
+}
 
-
-##THIS IS FOR DATE&TIME##
-#start_hour <- seq.POSIXt(from=as_datetime("2016-07-15 00:00:00"), 
-                        # to=as_datetime("2016-07-18 23:59:00"),by=3600*6)
-#intervals <- str_c(start_hour, "..", start_hour + hours(6))
-#intervals <- str_replace_all(intervals ," ","T")
-##=====================##
+##Examples of creating intervals:
+intervals <- find_date_intervals("2016-5-1","2016-7-30",15) # Format: (startdate, enddate, days)
+#intervals <- find_time_intervals("2016-5-1 00:00:00","2016-5-3 23:59:00",6) # Format: (starttime from 00:00:00, endtime to 23:59:00, hours)
 
 
 # Initializing client
@@ -139,7 +158,6 @@ out_df <- data.table(time = unlist(out_df$V4),
                   license = unlist(out_df$licenseInfo))
 
 # Write into the database
-reponames_to_bd <- function() {
   conn <- dbConnect(drv = PostgreSQL(),
                     dbname = "oss",
                     host = "postgis",
@@ -153,5 +171,5 @@ reponames_to_bd <- function() {
                append = TRUE,
                row.names = FALSE)
   on.exit(expr = dbDisconnect(conn = conn))
-}
+
 
