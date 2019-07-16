@@ -13,29 +13,33 @@ knitr::opts_knit$set(echo = TRUE)
 ```{r Housekeeping, message=FALSE}
 # Housekeeping ----
 for (pkg in c("RPostgreSQL", "assertthat", "lubridate", "stringr", "RSelenium",
-              "purrr", "maditr")) {
+              "purrr", "maditr", "rvest")) {
   library(pkg, character.only = TRUE)
 }
+rm(list = "pkg")
 # Initiate Web Driver ----
 remDr <- remoteDriver(remoteServerAddr = "selenium_chrome", browserName = "chrome")
+remDr$open(silent = TRUE)
 ```
 
 ```{r}
 parse_github_contributions <- function(remDr, slug) {
-  slug <- "JuliaLang/julia"
-  remDr$open(silent = TRUE)
+  # slug <- "JuliaLang/julia"
   "https://github.com/${slug}/graphs/contributors" %>%
     str_interp() %>%
     remDr$navigate()
-  remDr$setImplicitWaitTimeout()
-  remDr$setImplicitWaitTimeout()
-  relevant_dates <- remDr$findElement(using = "xpath",
-                                   value = '//*[@id="js-repo-pjax-container"]/div[2]/div[1]/div/div[2]/div[1]/div/h2') %>%
-    (function(x) x$getElementText()[[1L]]) %>%
+  relevant_dates <- remDr$findElement(using = "css", value = "h2") %>%
+    (function(x) x$getElementText() %>% getElement(name = 1L))
+  while (str_detect(string = relevant_dates,
+                    pattern = "Loading contributions…")) {
+    Sys.sleep(time = 0.5)
+    relevant_dates <- remDr$findElement(using = "css", value = "h2") %>%
+    (function(x) x$getElementText() %>% getElement(name = 1L))
+  }
+  relevant_dates <- relevant_dates %>%
     str_extract_all(pattern = "\\p{L}{3} \\d+, \\d+") %>%
     unlist() %>%
-    as_date(format = "%b %d, %Y", tz = "UTC") %>%
-    as.character()
+    as_date(format = "%b %d, %Y", tz = "UTC")
   login <- remDr$findElements(using = "css",
                           value = "#contributors > ol > li > span > h3 > a.text-normal") %>%
     map_chr(.f = function(x) x$getElementText() %>% getElement(name = 1L))
@@ -77,10 +81,16 @@ parse_github_contributions <- function(remDr, slug) {
                append = TRUE)
   on.exit(expr = remDr$closeall())
   on.exit(expr = dbDisconnect(conn = conn))
+  return()
 }
 ```
 
 ```{r}
-parse_github_contributions(remDr = remDr,
-                           slug = "JuliaLang/julia")
+chk <- parse_github_contributions(remDr = remDr,
+                                  slug = "JuliaLang/julia")
+# slugs <- 
+for (slug in slugs) {
+  parse_github_contributions(remDr = remDr, slug = slug)
+}
+remDr$close()
 ```
