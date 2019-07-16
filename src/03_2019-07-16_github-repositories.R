@@ -28,15 +28,16 @@ find_time_intervals <- function(starttime,endtime,hour){
   start_time <- as_datetime(x = starttime)
   end_time <- as_datetime(x = endtime)
   period_length <- hour
-  num_interval <- as.integer(ceiling(difftime(end_time,start_time)*24))
+  num_interval <- as.integer(ceiling(difftime(end_time,start_time)*24/period_length))
   times <- seq.POSIXt(from = start_time,
                     to = end_time,
                     length.out = num_interval)
   len <- length(x = times) - 1L
   start_times <- times[1:len]
-  end_times <- times[-1L] - minutes()
+  end_times <- times[-1L] - seconds()
   end_times[len] <- end_time
-  str_c(start_times, "..", end_times)
+  string <- str_c(start_times, "..", end_times)
+  str_replace_all(string, " ", "T")
 }
 
 ##Examples of creating intervals:
