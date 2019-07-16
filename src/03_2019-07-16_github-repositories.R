@@ -13,10 +13,10 @@ start_date <- seq.Date(from = as_date(x = "2008-01-01"),
 intervals <- str_c(start_date, "..", start_date + days(x = 29L))
 
 ##THIS IS FOR DATE&TIME##
-#start_hour <- seq.POSIXt(from=as_datetime("2018-08-28T12:30:00"), 
-                         #to=as_datetime("2018-08-28T18:30:00"),by=3600*2)
+#start_hour <- seq.POSIXt(from=as_datetime("2018-08-28 12:30:00"), 
+                         #to=as_datetime("2018-08-28 18:30:00"),by=3600*2)
 #intervals <- str_c(start_hour, "..", start_hour + hours(2))
-#str_replace_all(intervals ," ","T")
+#intervals <- str_replace_all(intervals ," ","T")
 
 
 # Initializing client
