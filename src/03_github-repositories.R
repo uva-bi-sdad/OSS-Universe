@@ -1,9 +1,69 @@
+<<<<<<< HEAD
 search_by_timeframe(starttime,endtime,step){
   start_date <- seq.Date(from = as_date(x = starttime),
                          to = as_date(x = endtime),
                          by = step)
   intervals <- str_c(start_date, "..", start_date + days(x = 29L))
   
+=======
+# devtools::install_github("ropensci/ghql")
+library(ghql)
+library(jsonlite)
+library(httr)
+library(stringr)
+library(maditr)
+
+# Initializing client
+token <- Sys.getenv("github_personal_token")
+
+cli <- GraphqlClient$new(
+  url = "https://api.github.com/graphql",
+  headers = add_headers(Authorization = paste0("Bearer ", token))
+)
+
+# Since not every GraphQL server has a schema at the base URL, have to manually load the schema in this case
+cli$load_schema()
+
+search_by_license <- function(license_name) {
+  
+  # Make a Query class object
+  qry <- Query$new()
+
+  # Make the initial query of the first 100 records
+  qry$query("getmydata", str_interp(
+         '{
+            rateLimit {
+              cost
+              remaining
+              resetAt
+            }
+            search(query: "license:${license_name}", type: REPOSITORY, first : 100) {
+              repositoryCount
+              pageInfo {
+                endCursor
+                startCursor
+                hasNextPage
+              }
+              edges {
+                node {
+                  ... on Repository {
+                    owner {
+                      login
+                    }
+                    name
+                  }
+                }
+              }
+            }
+          }'))
+
+  # Parse the result
+  result <- fromJSON(txt = cli$exec(qry$queries$getmydata))
+
+  if (is.null(result$data)) {
+    return(value = str_interp(string = "License ${license_name} has 0 count."))
+  } 
+>>>>>>> b7aefdcbc0eed4a25d4c61b9d878bace12b5b175
   
   # Initializing client
   token <- Sys.getenv("GITHUB_GRAPHQL_TOKEN")
