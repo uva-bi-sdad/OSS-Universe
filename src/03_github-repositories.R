@@ -1,3 +1,11 @@
+<<<<<<< HEAD
+search_by_timeframe(starttime,endtime,step){
+  start_date <- seq.Date(from = as_date(x = starttime),
+                         to = as_date(x = endtime),
+                         by = step)
+  intervals <- str_c(start_date, "..", start_date + days(x = 29L))
+  
+=======
 # devtools::install_github("ropensci/ghql")
 library(ghql)
 library(jsonlite)
@@ -55,120 +63,121 @@ search_by_license <- function(license_name) {
   if (is.null(result$data)) {
     return(value = str_interp(string = "License ${license_name} has 0 count."))
   } 
+>>>>>>> b7aefdcbc0eed4a25d4c61b9d878bace12b5b175
   
-  count <- result$data$search$repositoryCount
-  output <- data.table(result$data$search$edges$node$name)
-  nextpage <- result$data$search$pageInfo$hasNextPage
+  # Initializing client
+  token <- Sys.getenv("GITHUB_GRAPHQL_TOKEN")
   
-  while (nextpage) {
-  # Get the end cursor
-  cursor <- result$data$search$pageInfo$endCursor
-  qry_string <- str_interp('{
-              rateLimit {
-                cost
-                remaining
-                resetAt
-              }
-              search(query: "license:${license_name}", type: REPOSITORY, first: 100, after: ${cursor}) {
-                repositoryCount
-                pageInfo {
-                  endCursor
-                  startCursor
-                  hasNextPage
-                }
-                edges {
-                  node {
-                    ... on Repository {
-                      owner {
-                        login
-                      }
-                      name
-                    }
-                  }
-                }
-              }
-            }')
-  qry <- Query$new()
-  qry$query('getmydata', qry_string)         
+  cli <- GraphqlClient$new(
+    url = "https://api.github.com/graphql",
+    headers = add_headers(Authorization = paste0("Bearer ", token))
+  )
   
-  result <- jsonlite::fromJSON(cli$exec(qry$queries$getmydata))
-  output <- rbind(output, data.table(result$data$search$edges$node$name))
-  nextpage <- result$data$search$pageInfo$hasNextPage
   
-  if (result$data$rateLimit$remaining == 1){
-    while (Sys.time() < result$data$rateLimit$resetAt) {
-      Sys.sleep(3600)
-    }
-  }
-  }
+  # Since not every GraphQL server has a schema at the base URL, have to manually load the schema in this case
+  cli$load_schema()
+  # pre-allocate list
+  out_list <- vector("list",length(intervals))
   
-  print(str_interp("License ${license_name} has ${count} counts"))
-  output
-}
-
-
-search_by_license("ISC")
-
-
-
-
-
-
-
-
-
-##============================
-
-url="https://api.github.com/graphql"
-
-auth_header <- paste("bearer", '963108f94c445eb2e50587013c0356bfce308ff1')
-agent="ccong2"
-
-pbody <-  'query{
-  rateLimit {
-    cost
-    remaining
-    resetAt
-  }
-  search(query: "license:mit", type: REPOSITORY, first: 20) {
-    repositoryCount
-    pageInfo {
-      endCursor
-      startCursor
-    }
-    edges {
-      node {
-        ... on Repository {
-          owner {
-            login
-          }
-          name
-        }
+  for (i in 1:length(intervals)){
+    qry_initial <- str_interp('{
+                              rateLimit {
+                              cost
+                              remaining
+                              resetAt
+                              }
+                              search(query: "license:mit created:${intervals[i]}", type: REPOSITORY, first: 100) {
+                              repositoryCount
+                              pageInfo {
+                              endCursor
+                              startCursor
+                              hasNextPage
+                              }
+                              nodes {
+                              ... on Repository {
+                              name
+                              owner{
+                              login
+                              }
+                              licenseInfo{
+                              spdxId
+                              }
+                              }
+                              }
+                              }
+  }'
+)
+    
+    qry <- Query$new()
+    qry$query('getmydata',qry_initial)
+    
+    result <- jsonlite::fromJSON(cli$exec(qry$queries$getmydata))
+    count <- result$data$search$repositoryCount
+    output <- as.list(result$data$search$nodes)
+    nextpage <- result$data$search$pageInfo$hasNextPage
+    
+    if (is.null(result$data)) {
+      return(value = str_interp(string = str_interp("License mit at ${intervals[i]} has 0 count.")))
+    } 
+    
+    if (count <= 1000){
+      #dt <- data.table(output$name,output$owner$login,output$createdAt,output$updatedAt,output$defaultBranchRef$target$history)
+      while (nextpage) {
+        #Sys.sleep(10)
+        # Get the end cursor
+        cursor <- result$data$search$pageInfo$endCursor
+        qry_after <- str_interp('{
+                                rateLimit {
+                                cost
+                                remaining
+                                resetAt
+                                }
+                                search(query: "license:mit created:${intervals[i]}", type: REPOSITORY, first:100, after:"${cursor}") {
+                                repositoryCount
+                                pageInfo {
+                                endCursor
+                                startCursor
+                                hasNextPage
+                                }
+                                nodes {
+                                ... on Repository {
+                                name
+                                owner{
+                                login
+                                }
+                                licenseInfo {
+                                spdxId
+                                }
+                                }
+                                }
+                                }
+      }'
+)
+        qry <- Query$new()
+        qry$query('getmydata', qry_after)
+        
+        result <- jsonlite::fromJSON(cli$exec(qry$queries$getmydata))
+        output <- mapply(c, output, as.list(result$data$search$nodes), SIMPLIFY=FALSE)
+        nextpage <- result$data$search$pageInfo$hasNextPage
+        }#END OF WHILE
+      print(str_interp("License mit at ${intervals[i]} has ${count} counts"))
       }
+    
+    
+    if (count >  1000){
+      return(value = str_interp(string = str_interp("License mit at ${intervals[i]} has more than 1000 count.")))
     }
-  }
-}'
-
-
-res <- POST(url, body = rjson::toJSON(pbody),  
-            add_headers(Authorization=auth_header,`User-Agent` = agent))
-
-library(stringr)
-body<-str_remove_all(body,"\n")
-body<-rjson::toJSON(body)
-body<-str_remove_all(body,"")
-
-res <- content(res, as = "parsed", encoding = "UTF-8")
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
+    output[[4]] <- as.list(rep(intervals[i],length(output$name)))
+    
+    out_list[[i]] <- output
+    }
+  
+  
+  df <- data.frame(t(sapply(out_list,c)))
+  
+  df2 <- data.table(time = unlist(df$V4),
+                    reponame = unlist(df$name), owner = unlist(df$owner),
+                    license = unlist(df$licenseInfo))
+  
+}
