@@ -41,11 +41,12 @@ find_time_intervals <- function(starttime,endtime,hour){
 }
 
 ##Examples of creating intervals:
-intervals <- find_date_intervals("2016-5-1","2016-7-30",15) # Format: (startdate, enddate, days)
+intervals <- find_date_intervals("2010-3-01","2011-11-15",15) # Format: (startdate, enddate, days)
 #intervals <- find_time_intervals("2016-5-1 00:00:00","2016-5-3 23:59:00",6) # Format: (starttime from 00:00:00, endtime to 23:59:00, hours)
 
 
 # Initializing client
+
 token <- Sys.getenv("GITHUB_GRAPHQL_TOKEN")
 
 cli <- GraphqlClient$new(
@@ -161,7 +162,7 @@ out_df <- data.table(time = unlist(out_df$V4),
 # Write into the database
   conn <- dbConnect(drv = PostgreSQL(),
                     dbname = "oss",
-                    host = "postgis",
+                    host = "postgis_1",
                     port = 5432L,
                     user = Sys.getenv("db_userid"),
                     password = Sys.getenv("db_pwd"))
