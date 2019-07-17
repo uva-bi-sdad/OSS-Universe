@@ -161,7 +161,7 @@ out_df <- data.table(time = unlist(out_df$V4),
 # Write into the database
   conn <- dbConnect(drv = PostgreSQL(),
                     dbname = "oss",
-                    host = "postgis",
+                    host = "postgis_1",
                     port = 5432L,
                     user = Sys.getenv("db_userid"),
                     password = Sys.getenv("db_pwd"))
