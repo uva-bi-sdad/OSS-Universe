@@ -13,7 +13,7 @@ knitr::opts_knit$set(echo = TRUE)
 ```{r Housekeeping, message=FALSE}
 # Housekeeping ----
 for (pkg in c("RPostgreSQL", "assertthat", "lubridate", "stringr", "RSelenium",
-              "purrr", "maditr", "rvest")) {
+              "purrr", "maditr", "rvest", "tidyverse")) {
   library(pkg, character.only = TRUE)
 }
 rm(list = "pkg")
@@ -103,10 +103,11 @@ conn <- dbConnect(drv = PostgreSQL(),
                     password = Sys.getenv("db_pwd"))
 all_slugs <- dbReadTable(conn = conn,
                      name = c(schema = "universe", name = "reponames")) %>%
-  dt_mutate(slug = str_c(owner, "/", name)) %>%
+  mutate(slug = str_c(login, "/", reponame)) %>%
   getElement(name = "slug")
+
 slugs_done <- dbReadTable(conn = conn,
-                     name = c(schema = "universe", name = "")) %>%
+                     name = c(schema = "universe", name = "reponames")) %>%
   getElement(name = "slug")
 slugs <- setdiff(x = all_slugs, y = slugs_done)
 for (slug in slugs) {
