@@ -23,13 +23,7 @@ remDr$open(silent = TRUE)
 ```
 
 ```{r}
-<<<<<<< HEAD
-parse_github_contributions <- function(remDr, slug) {
-   #slug <- "jnewland/xhtmlize"
-=======
 parse_github_contributions <- function(remDr, slug = "jnewland/xhtmlize") {
-  
->>>>>>> c4a2895f7ec378e038c50a47975ce9ca496a3ede
   "https://github.com/${slug}/graphs/contributors" %>%
     str_interp() %>%
     remDr$navigate()
