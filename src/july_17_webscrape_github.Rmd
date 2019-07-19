@@ -24,7 +24,7 @@ remDr$open(silent = TRUE)
 
 ```{r}
 parse_github_contributions <- function(remDr, slug) {
-  # slug <- "JuliaLang/julia"
+   slug <- "jnewland/xhtmlize"
   "https://github.com/${slug}/graphs/contributors" %>%
     str_interp() %>%
     remDr$navigate()
@@ -110,8 +110,24 @@ slugs_done <- dbReadTable(conn = conn,
                      name = c(schema = "universe", name = "reponames")) %>%
   getElement(name = "slug")
 slugs <- setdiff(x = all_slugs, y = slugs_done)
+#for (slug in slugs) {
+ # parse_github_contributions(remDr = remDr, slug = slug)
+#}
+
+```
+
+```{r}
+#get info
+start_time <- Sys.time()
 for (slug in slugs) {
-  parse_github_contributions(remDr = remDr, slug = slug)
+  parse_github_contributions(remDr = remDr, slug = slugs) 
+  print(slug)
+  Sys.sleep(5)
 }
+end_time <- Sys.time()
+end_time - start_time
+#find error
+traceback()
 remDr$close()
 ```
+
