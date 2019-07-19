@@ -136,7 +136,7 @@ slugs <- setdiff(x = all_slugs, y = slugs_done)
 #get info
 start_time <- Sys.time()
 for (slug in slugs) {
-  parse_github_contributions(remDr = remDr, slug = slugs) 
+  parse_github_contributions(remDr = remDr, slug = slug) 
   print(slug)
   Sys.sleep(5)
 }
