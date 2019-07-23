@@ -29,21 +29,18 @@ parse_github_contributions <- function(remDr, slug = "jnewland/xhtmlize") {
     str_interp() %>%
     remDr$navigate()
   
-  relevant_dates <- remDr$findElement(using = "css", value = "h2") %>%
-    (function(x) x$getElementText() %>% getElement(name = 1L))
-    
-  # NEED TO CHECK FOR EMPTY RESULT
+    # NEED TO CHECK FOR EMPTY RESULT
   txt <- remDr$findElement(using='css selector',"body")$getElementText()
+  while (str_detect(txt, "Crunching the latest data")) {
+      Sys.sleep(time = 0.5)
+      txt <- remDr$findElement(using='css selector',"body")$getElementText()
+    }
   if (str_detect(txt, "We don’t have enough data to show anything useful")) {
     print("No Data")
   } else {
-    while (str_detect(string = relevant_dates,
-                      pattern = "Loading contributions…")) {
-      Sys.sleep(time = 0.5)
-      relevant_dates <- remDr$findElement(using = "css", value = "h2") %>%
-      (function(x) x$getElementText() %>% getElement(name = 1L))
-    }
     
+    relevant_dates <- remDr$findElement(using = "css", value = "h2") %>%
+    (function(x) x$getElementText() %>% getElement(name = 1L))
     relevant_dates <- relevant_dates %>%
       str_extract_all(pattern = "\\p{L}{3} \\d+, \\d+") %>%
       unlist() %>%
@@ -123,7 +120,7 @@ parse_github_contributions <- function(remDr, slug = "jnewland/xhtmlize") {
 ```
 
 ```{r}
-res <- parse_github_contributions(remDr, "pandas-dev/pandas") # vanpelt/jsawesome pandas-dev/pandas
+#res <- parse_github_contributions(remDr, "pandas-dev/pandas") # vanpelt/jsawesome pandas-dev/pandas
 ```
 
 ```{r}
@@ -137,12 +134,12 @@ conn <- dbConnect(drv = PostgreSQL(),
                     user = Sys.getenv("db_userid"),
                     password = Sys.getenv("db_pwd"))
 all_slugs <- dbReadTable(conn = conn,
-                     name = c(schema = "universe", name = "reponames")) %>%
+                     name = c(schema = "universe", name = "repo_2008")) %>%
   mutate(slug = str_c(login, "/", reponame)) %>%
   getElement(name = "slug")
 
 slugs_done <- dbReadTable(conn = conn,
-                     name = c(schema = "universe", name = "reponames")) %>%
+                     name = c(schema = "universe", name = "repo_2008")) %>%
   getElement(name = "slug")
 slugs <- setdiff(x = all_slugs, y = slugs_done)
 
@@ -156,7 +153,7 @@ dbDisconnect(conn)
 ```{r}
 #get info
 start_time <- Sys.time()
-for (slug in slugs[15:30]) {
+for (slug in slugs[330:3305]) {
   print(slug)
   parse_github_contributions(remDr = remDr, slug = slug)
   Sys.sleep(2)
@@ -164,7 +161,7 @@ for (slug in slugs[15:30]) {
 end_time <- Sys.time()
 end_time - start_time
 #find error
-traceback()
-remDr$close()
+#traceback()
+
 ```
 
