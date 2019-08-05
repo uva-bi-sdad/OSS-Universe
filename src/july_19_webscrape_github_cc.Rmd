@@ -134,12 +134,12 @@ conn <- dbConnect(drv = PostgreSQL(),
                     user = Sys.getenv("db_userid"),
                     password = Sys.getenv("db_pwd"))
 all_slugs <- dbReadTable(conn = conn,
-                     name = c(schema = "universe", name = "repo_2008")) %>%
+                     name = c(schema = "universe", name = "reponames_2013_unique")) %>%
   mutate(slug = str_c(login, "/", reponame)) %>%
   getElement(name = "slug")
 
 slugs_done <- dbReadTable(conn = conn,
-                     name = c(schema = "universe", name = "repo_2008")) %>%
+                     name = c(schema = "universe", name = "reponames_2013_unique")) %>%
   getElement(name = "slug")
 slugs <- setdiff(x = all_slugs, y = slugs_done)
 
@@ -153,7 +153,7 @@ dbDisconnect(conn)
 ```{r}
 #get info
 start_time <- Sys.time()
-for (slug in slugs[330:3305]) {
+for (slug in slugs[1:5000]) {
   print(slug)
   parse_github_contributions(remDr = remDr, slug = slug)
   Sys.sleep(2)
