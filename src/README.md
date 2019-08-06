@@ -14,7 +14,7 @@ and only contain incompleted results.
 **02_GraphQL + GHTorrent**
 - 01_query_GitHub_licenses
 This is the upgraded version of GraphQL queries. We have used this script to collect repo names, owner login names and OSS licenses from 2012 to 2018. 
-The tables in the database that store our final results are:
+The tables in the database that store our final results are:  
 reponames_2012_2  
 reponames_2013_2  
 reponames_2014  
@@ -24,7 +24,7 @@ reponames_2017
 reponames_2018  
 
 - 02_combine_licenses_with_GHTorrent
-This script merges our data in the last step with GHTorrent data by slugs (owner/reponame) to obtain all repositories with OSS licenses as well as their contributors' information including location, company, total commits and login names. The resulting tables in the database are:
+This script merges our data in the last step with GHTorrent data by slugs (owner/reponame) to obtain all repositories with OSS licenses as well as their contributors' information including location, company, total commits and login names. The resulting tables in the database are:  
 all_repos_commits_2012  
 all_repos_commits_2013  
 all_repos_commits_2014  
