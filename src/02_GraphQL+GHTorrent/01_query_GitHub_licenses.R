@@ -1,4 +1,4 @@
-###This script creates functions that query GitHub repos with specific licenses created during a specific period of time
+###This script creates functions that query GitHub repos with specific licenses created during any period of time
 ###We use this script to get the slugs, licenses, and save each year's data in a separate table in the database.
 ###The tables are saved as oss -> universe -> reponames_201x
 
