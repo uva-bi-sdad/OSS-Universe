@@ -5,6 +5,7 @@ library(RPostgreSQL)
 library(data.table)
 library(ggplot2)
 library(tidyverse)
+library(treemap)
 
 # Setting root directory
 knitr::opts_knit$set(echo = TRUE,
@@ -115,5 +116,48 @@ ggplot(data=toplicenses.df, aes(x=reorder(License,-Percent), y=Percent,ymax=100)
 
 ##Plot4: Contributors per repo
 ```{r}
+# define the color used
+uva_colors <- c(
+  `blue`        = "#232D4B",
+  `orange`      = "#E57200",
+  `turquoise` = "#2FBFCA",
+  `aqua` = "#A0D5A4",
+  `red` = "#DF1E43",
+  `medium grey`  = "#DADADA",
+  `text grey` = "#666666")
+# a function that extracts the hex codes from this vector by name
+uva_cols <- function(...) {
+  cols <- c(...)
 
+  if (is.null(cols))
+    return (uva_colors)
+
+  uva_colors[cols]
+}
+
+# average repos per contributor
+repo <- table(data$repo_slug) %>% data.frame() 
+#repo$Log <- log10(repo$Freq)
+
+# set up boundaries for intervals/bins
+breaks <- c(0,2,3,4,10,50,200,1000,100000)
+# specify interval/bin labels
+labels <- c("1", "[2-3)","[3-4)" ,"[4-10)", "[10-50)", "[50-200)","[200-1,000)",">=1,000")
+# bucketing data points into bins
+bins <- cut(repo$Freq, breaks, include.lowest = T, right=FALSE, labels = labels)
+# inspect bins
+summary(bins)
+# make a barplot that looks like a histogram
+barplot(summary(bins))
+
+# make a dataframe to make it easier to plot
+df <- cbind.data.frame(c("1 or 2 contributors (48%)","3 contributors (37%)","4 (8%)","5-10 (6%)","11-50 (0.7%)","50-200","200-1,000",">=1,000"),as.numeric(as.character(summary(bins))))
+colnames(df) <- c("contributors","freq")
+
+#ggplot(df) +
+  aes(x = contributors, y = freq, fill="orange") +
+  geom_col() + theme_bw()
+
+pal <- c(uva_cols("orange"),uva_cols("blue"),  uva_cols("turquoise"), uva_cols("aqua"),uva_cols("red"),uva_cols("medium grey"))
+treemap(df, index="contributors", vSize="freq",palette = pal, title="Number of contributors per repository",fontsize.labels=c(15,15,12,12,10,8,8,8),fontsize.title=18)
 ```
