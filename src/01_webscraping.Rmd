@@ -153,7 +153,7 @@ dbDisconnect(conn)
 ```{r}
 #get info
 start_time <- Sys.time()
-for (slug in slugs[1:5000]) {
+for (slug in slugs) {
   print(slug)
   parse_github_contributions(remDr = remDr, slug = slug)
   Sys.sleep(2)
