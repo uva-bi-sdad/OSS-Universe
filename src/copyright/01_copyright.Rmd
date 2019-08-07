@@ -1,0 +1,274 @@
+---
+title: "Copyright Records"
+author: "José Bayoán Santiago Calderón"
+date: "2019-05-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(echo = TRUE)
+```
+
+## Summary
+
+Obtain all copyright records in the
+
+U.S. Copyright Office. n.d. “Copyright Public Records Catalog Online. 1978 to Present.” US Library of Congress. Public Catalog. https://cocatalog.loc.gov/.
+
+Time Coverage: 2006-2018
+
+Type of record: Computer File
+
+The data is public domain and open to harvest
+
+- Curtesy policy
+  - [off-peak time 21:00-06:00](https://public.resource.org/copyright.gov/index.html)
+  - [10 requests per minute](https://www.loc.gov/legal/).
+  - Let [Mr. Billy Hoppis](mailto:Billy%20Hoppis<cbhop@loc.gov>?subject=Data%20Harvest) know about the data harvest to monitor potential stress to the server
+
+No bulk download functionality at present.
+
+Search results are limited to a maximum of 10,000 records.
+
+## Overview
+
+The strategy will be to scrape records using the public portal in the following manner,
+
+1. Use RSelenium to cache options that use JavaScript (date, document type)
+2. Limit searches by date in order to avoid any query with more than 10,000 records
+3. Use the required search query term uses the first alphanumeric character ([A-Z0-9])
+4. Use URL modifications to allow displaying all records in a single page
+5. Download all records in the Full Record format to the server
+
+## Examples
+- No records: year = 2006 & search_term = ABCD
+- Single record: year = 2006 & search_term = 0
+- Multiple records: A
+
+## Data Harvest
+
+Set-Up
+
+```{r Housekeeping, message=FALSE}
+# Housekeeping ----
+for (pkg in c("RPostgreSQL", "assertthat", "stringr", "RSelenium", "purrr",
+              "maditr", "here")) {
+  library(pkg, character.only = TRUE)
+  }
+# Initiate Web Driver ----
+remDr <- remoteDriver(remoteServerAddr = "selenium_chrome", browserName = "chrome")
+```
+
+Storing results from a server query
+
+- A query has URL encoded parameters
+  - Some parameters may be modified
+  - Other parameters are passed via an ID query through JavaScript (cannot be modified during the connection)
+  - Sample query link: https://cocatalog.loc.gov/cgi-bin/Pwebrecon.cgi?PostSearchSortBy1=NULL&HID=15739438&HID=15744485&PostSearchSortBy2=NULL&Search_Arg=A&Search_Code=TALL&ti=1%2C0&CNT=10000&PID=S2XsVoljELJ6H0pO1s4cO16BnYQ_&SEQ=20190520172617&REC=1&RD=0&SAVE=Format+for+Print%2FSave&RC=1&MAILADDY=&EMAILADDRESS=None&LIMITBUTTON=0
+  - URL passed to the server has a max lenght (about 500 records limit per request)
+
+```{r}
+parse_one_page <- function(remDr, path) {
+  records_all_on_page <- remDr$findElement(using = "css",
+                                           value = "body > form > center > center:nth-child(10) > table > tbody > tr:nth-child(3) > td:nth-child(1) > input[type=RADIO]:nth-child(1)")
+  records_all_on_page$clickElement()
+  export <- remDr$findElement(using = "css",
+                              value = "body > form > center > center:nth-child(10) > table > tbody > tr:nth-child(2) > td:nth-child(2) > input[type=SUBMIT]")
+  export$clickElement()
+  output <- remDr$getPageSource() %>%
+    getElement(name = 1L)
+  file.create(path)
+  write(x = output, file = path)
+  remDr$goBack()
+  next_page <- remDr$findElements(using = "xpath",
+                                  value = "//*[contains(@src,'s-next.gif')]")
+  if (is_empty(x = next_page)) {
+    on.exit(expr = remDr$close())
+  } else {
+    next_page <- next_page %>%
+      getElement(name = 1L)
+    next_page$clickElement()
+    path <- str_replace(string = path,
+                        pattern = "\\d{2}(?=\\.html$)",
+                        replacement = str_extract(string = path,
+                                                  pattern = "\\d{2}(?=\\.html$)") %>%
+                          as.integer() %>%
+                          (function(.) . + 1L) %>%
+                          str_pad(width = 2L,
+                                  pad = "0"))
+    parse_one_page(remDr = remDr, path = path)
+    }
+  }
+
+#' Saves the raw results for copyright records of type "Computer File" in a given year for a given letter as search term ("/data/copyright/original/2000A1.html")
+#'
+#' @param remoteDriver remDr
+#' @param character search_year
+#' @param character search_term
+#' @examples
+#' scrape_copyright_records(search_year = 2000, search_term = "A")
+scrape_copyright_records <- function(remDr, search_year, search_term) {
+  # JavaScript ----
+  remDr$open(silent = TRUE)
+  remDr$navigate(url = "https://cocatalog.loc.gov/")
+  set_search_limits <- remDr$findElement(using = "css",
+                                         value = "body > form > table:nth-child(1) > tbody > tr:nth-child(2) > td > div > div > table > tbody > tr > td:nth-child(3) > div > a > img")
+  set_search_limits$clickElement()
+  item_type <- remDr$findElement(using = "xpath",
+                                 value = "/html/body/form/table/tbody/tr/td/div/table/tbody/tr[7]/td[2]/div/select/option[10]")
+  assert_that(item_type$getElementText() %>% getElement(name = 1L) == "Computer Files")
+  item_type$clickElement()
+  date_input <- remDr$findElement(using = "xpath",
+                                  value = "/html/body/form/table/tbody/tr/td/div/table/tbody/tr[5]/td[2]/div/input[1]")
+  date_input$sendKeysToElement(list(as.character(search_year)))
+  set_search_limits_submit <- remDr$findElement(using = "xpath",
+                                                value = "/html/body/form/table/tbody/tr/td/div/table/tbody/tr[10]/td/div/font/input[4]")
+  set_search_limits_submit$clickElement()
+  records_per_page <- remDr$findElement(using = "xpath",
+                                        value = "/html/body/form/table[1]/tbody/tr[2]/td/div/div/table/tbody/tr/td[1]/select/option[4]")
+  records_per_page$clickElement()
+  search_for <- remDr$findElement(using = "xpath",
+                                  value = "/html/body/form/table[1]/tbody/tr[1]/td/table[2]/tbody/tr[2]/td/table/tbody/tr[1]/td/font/b/input")
+  search_for$sendKeysToElement(list(as.character(search_term)))
+  begin_search <- remDr$findElement(using = "xpath",
+                                    value = "/html/body/form/table[1]/tbody/tr[2]/td/div/div/table/tbody/tr/td[2]/div/input[2]")
+  begin_search$clickElement()
+  # Verify that the maximum number of records for the query is below the limit ----
+  # If there are no records,
+  no_records <- remDr$findElements(using = "xpath",
+                                   value = "/html/body/table/tbody")
+  if (!is_empty(x = no_records)) {
+    no_records <- no_records[[1L]]$getElementText() %>%
+      getElement(name = 1L) %>%
+      str_detect(pattern = "Your search found no results.")
+    if (no_records) {
+      return("No records")
+    }
+  }
+  # If there is one record or more records ----
+  records_on_page <- remDr$findElements(using = "xpath",
+                                        value = "/html/body/table/tbody/tr[3]/td")
+  path <- here("data", "oss", "original", "copyright", str_c(search_year, search_term, "01.html"))
+  # If there is one record ----
+  if (is_empty(x = records_on_page)) {
+    export <- remDr$findElement(using = "css",
+                                value = "body > form:nth-child(6) > center:nth-child(25) > table > tbody > tr:nth-child(2) > td > input[type=SUBMIT]")
+    export$clickElement()
+    output <- remDr$getPageSource() %>%
+        getElement(name = 1L)
+    file.create(path)
+    write(x = output, file = path)
+    return(value = str_c("year: ", search_year, " - ", "search_term: ", search_term))
+  }
+  # If there are multiple records ----
+  records_on_page <- records_on_page[[1L]] %>%
+    (function(.) .$getElementText()) %>%
+    getElement(name = 1L) %>%
+    str_extract(pattern = "\\d+(?= entries.)") %>%
+    as.integer()
+  # Verify there aren't too many records
+  assert_that(records_on_page <= 1e4)
+  # Parse records ----
+  parse_one_page(remDr = remDr, path = path)
+  # Close Web Driver ----
+  on.exit(expr = remDr$close())
+  }
+```
+scrape_copyright_records(remDr = remDr, year = year, search_term = search_term)
+Run scrapper for a given year
+
+```{r}
+# search_year <- 2015
+# search_term <- ""
+start_time = Sys.time()
+# for (search_term in c(LETTERS, 0:9)) {
+  # scrape_copyright_records(remDr = remDr, search_year = search_year, search_term = search_term)
+#   Sys.sleep(time = 5L)
+#   }
+end_time <- Sys.time()
+end_time - start_time
+```
+
+## Data Parsing
+
+These functions parse the raw data into the tabular representation
+
+```{r}
+# For each record, it finds the field entries and values ----
+parse_record <- function(record) {
+  record <- str_split(string = record, pattern = "\n") %>%
+    unlist()
+  if (any(str_detect(record, pattern = "^\\w.*?(?=:)"))) {
+    fieldnames <- str_extract_all(string = record, pattern = "^\\w.*?(?=:)", simplify = TRUE) %>%
+      subset(!(. %in% "")) %>%
+      as.vector()
+    fieldvalues <- vector(mode = "character", length = length(fieldnames))
+    for (i in seq_along(fieldnames)) {
+      startline <- detect_index(.x = record, .f = function(string) str_detect(string = string, pattern = str_c("^", fieldnames[i], ":")))
+      endline <- detect_index(.x = record[startline:length(record)], .f = function(string) str_detect(string = string, pattern = "")) + startline
+      fieldvalues[i] <- str_c(record[startline:endline], collapse = " ") %>%
+        str_extract(pattern = str_c("(?<=^", fieldnames[i], ":).*")) %>%
+        str_trim() %>%
+        str_replace_all(pattern = "\\s+", replacement = " ") %>%
+        str_replace_all(pattern = "&amp;", replacement = "&")
+      }
+    output <- data.table(t(fieldvalues))
+    colnames(output) <- fieldnames
+    output
+    }
+  }
+# For each file, it splits the various records and parse each one and then combine these ----
+parse_file <- function(filename) {
+  records <- read_file(filename) %>%
+    str_split(pattern = "={80}") %>%
+    getElement(name = 1L) %>%
+    `[`(1L:min(500L, length(x = .))) %>%
+    map_df(.f = parse_record)
+  }
+# It parses each file in the directory and combines all records in one tabular representation
+parse_files <- function() {
+  path <- here("data", "oss", "original", "copyright")
+  start_time = Sys.time()
+  output <- map_df(.x = str_c(path, list.files(path = path)), .f = parse_file)
+  end_time <- Sys.time()
+  print(end_time - start_time)
+  output
+  }
+# output <- parse_files()
+```
+
+The tabular representation is then processed and uploaded to the database
+
+- Remove duplicates
+- Split compound fields
+- Uploads to database
+
+```{r}
+# Clean dataset ----
+copyright <- output %>%
+   unique() %>%
+   mutate(`registration_number` = str_extract(string = `Registration Number / Date`, pattern = "\\w+"),
+          date = str_extract(string = `Registration Number / Date`, pattern = "(?<= / ).\\d{4}-{2}-{2}") %>%
+                 as.Date()) %>%
+   select(-c(`Registration Number / Date`, `Type of Work`)) %>%
+   arrange(`Copyright Claimant`, date, Title)
+colnames(x = copyright) <- names(x = copyright) 
+# Upload to database ----
+copyright_to_bd <- function() {
+  conn <- dbConnect(drv = PostgreSQL(),
+                    dbname = "oss",
+                    host = "postgis",
+                    port = 5432L,
+                    user = Sys.getenv("db_userid"),
+                    password = Sys.getenv("db_pwd"))
+  if (dbExistsTable(conn = conn, name = c(schema = "universe", name = "copyright"))) {
+    dbRemoveTable(conn = conn, name = c(schema = "universe", name = "copyright"))
+    }
+  dbWriteTable(conn = conn,
+               name = c(schema = "universe", name = "copyright"),
+               value = copyright,
+               row.names = FALSE)
+  on.exit(expr = dbDisconnect(conn = conn))
+  }
+# copyright_to_bd()
+```
