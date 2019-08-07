@@ -1,0 +1,77 @@
+---
+title: "Identify sectors for copyright Data"
+author: "Cong Cong"
+date: "2019-06-03"
+output: html_document
+---
+
+## Introduction
+This script reads the web-scraped copyright claimants information and divide them into sectors. 
+
+```{r setup, include=FALSE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+## Load the packages
+library(dplyr)
+library(DBI)
+library(stringr)
+library(ggplot2)
+```
+
+
+## Read the copyright data from database
+This dataset contains copyrighted computer files from 2006 to 2018 scraped from U.S. Copyright Office website https://cocatalog.loc.gov/.
+```{r message = FALSE, warning = FALSE, result="hide"}
+conn <- dbConnect(drv = RPostgreSQL::PostgreSQL(),
+                  dbname = "oss",
+                  host = "postgis_1",
+                  port = "5432",
+                  user = Sys.getenv("db_userid"),
+                  password = Sys.getenv("db_pwd"))
+data<-dbReadTable(conn = conn,
+            name = c(schema = "universe", name = "copyright"))
+dbDisconnect(conn = conn)
+  
+```
+
+
+## Identify and assign sectors
+We identify the copyright claimants to five sectors: business, nonprofit, government, university and individual. The following code creates an individual column for each sector indicating whether the claimant's name contains certain string patterns that can be identified as belonging to this sector. The last column shows each observation is either identified to a sector (TRUE), or cannot be identified (FALSE).
+```{r}
+cp_data <- data %>% select("copyright_claimant")%>%
+  unique()%>%
+  mutate(business = str_detect(string = copyright_claimant,pattern = "(?i)(corp|.?com|llp|inc.j|corporation)\\.?$|(lc.|Group|Entertainment|Computing|Software)$|Service.*|Consulting|Consultants|Business|Laboratories|Technologies|Technology|Bank|Company|Studios|Solutions|inc.|l\\.?l\\.?c.?|ltd|employer|Systems|System|Limited|Publishing"))%>%
+  mutate(nonprofit = str_detect(string=copyright_claimant,
+                               pattern ="(?i)association|foundation|fund|board of realtors|assoc.|society|societies|organization|board") & business==FALSE)%>%
+  mutate(government = str_detect(string=copyright_claimant,
+                               pattern = "(?i)government|authority|council|department|commission|office|county|administration") & business == FALSE & nonprofit == FALSE)%>%
+  mutate(university = str_detect(string=copyright_claimant,
+                               pattern = "(?i)university|academy|college|school|institute|research") & business == FALSE & nonprofit == FALSE & government ==FALSE)%>%
+  mutate(individual = str_detect(string = copyright_claimant,pattern ="(?i)(, \\d{4}-|pseud|Jr.|Sr.|2nd)") & business == FALSE & nonprofit == FALSE & government == FALSE & university == FALSE)%>%
+  mutate(identified = business | nonprofit | government | university | individual)
+head(cp_data) %>% knitr::kable()
+```
+
+## How many have been identified
+`r paste0(round(length(which(cp_data$identified))/nrow(cp_data),3)*100,"%")` records have been identified.
+```{r}
+table(cp_data$identified)
+
+```
+
+## Results
+Of all the identified copyright claimants, 53.3% are from the business sector. The break down of sectors are shown as follows:
+```{r}
+df <- cbind.data.frame(c("business","government","non-profit","university","individual","unidentified"),c(length(which(cp_data$business)),length(which(cp_data$government)),length(which(cp_data$nonprofit)),length(which(cp_data$university)),length(which(cp_data$individual)),nrow(cp_data)-length(which(cp_data$identified))))
+            
+colnames(df)<-c("sector","count")
+df$pct<-round(as.numeric(as.character(df$count))/nrow(cp_data),3)*100
+df%>% knitr::kable()
+
+ggplot(df, aes(x = 2, y = pct, fill=sector)) +
+    geom_bar(width = 1, stat = "identity", color = "white") +
+    coord_polar("y",start = 0)+
+    geom_text(aes(y = pct, label = paste0(round(pct,2),"%")), color = "white",position = position_stack(vjust = 0.5))+
+    xlim(0.5, 2.5)
+```
+

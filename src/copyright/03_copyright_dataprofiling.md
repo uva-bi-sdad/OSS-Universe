@@ -1,0 +1,288 @@
+Copyright Data Profiling
+================
+Cong Cong, Calvin Isch, Eliza Tobin
+2019-06-20
+
+-   [Introduction](#introduction)
+-   [Background](#background)
+-   [Data Source Overview](#data-source-overview)
+    -   [Data Source](#data-source)
+-   [Data profiling](#data-profiling)
+-   [Copyrights filed each year](#copyrights-filed-each-year)
+-   [Sectors](#sectors)
+    -   [Splitting copyrights into sectors](#splitting-copyrights-into-sectors)
+    -   [Validating the sectors](#validating-the-sectors)
+-   [OSS in the copyright data](#oss-in-the-copyright-data)
+-   [Challenges](#challenges)
+-   [Conclusion of copyrights and the OSS universe](#conclusion-of-copyrights-and-the-oss-universe)
+-   [Sources](#sources)
+
+Introduction
+------------
+
+This technical document evaluates the feasibility of using copyright data from the U.S. Copyright Office to measure innovation from Open Source Software (OSS). OSS makes up a large portion of the code created for productive use. Still, there are no commonly used metrics to measure the amount of OSS in existence. While copyrights inform economic metrics for traditional proprietary industries, it has not been used to measure OSS. In this document, copyright data are evaluated for use in identifying OSS innovation in the United States.
+
+Background
+----------
+
+According to the U.S. Copyright Office, copyright is a “form of protection providing by the laws of the United States to the authors of ‘original works of authorship’ that are fixed in a tangible form of expression” \[1, 1\]. An original work of authorship is categorized as an independent, minimally creative output constructed by a person. The Copyright Office finds a work to be “fixed” when it is solidified in a relatively changeless medium. The medium qualifies as permanent so long as the copyrighted work is distinguishable, duplicatable, and communicable. From the instant that the “original work of authorship is fixed,” a creation becomes copyrighted \[1\].
+
+A copyright created in and after 1978 last 70 years after the death of the claimant. For works authored by multiple actors, the claim lasts 70 years after the death of the last remaining creator. For works created by employees as representatives of their companies, as well as for authors identifying under a pseudonym or anonymously, the copyright lasts for either 95 years since a work’s inception or 120 years since publication. The shorter duration is chosen \[1\].
+
+There are various types of creations that are not protected by U.S. Copyright law. The U.S. Copyright Office states that “ideas, procedures, methods, systems, processes, concepts, principles,” and “discoveries” are not guarded by copyright \[1, 2\]. Additionally, a work must be fixed in a concrete manner. Moreover, works lacking minimal creativity are not considered for copyright. According to the U.S. Copyright Office, this includes “titles, names, short phrases, and slogans,” as well as “familiar symbols or designs” \[1, 2\]. Other works, including those that are “mere variations of typographic ornamentation, lettering, or coloring,” and those that are “listings of ingredients or contents,” are not protected under U.S. copyright law \[1, 2\].
+
+Once copyright ownership is gained, the claimant has numerous rights over his or her work. Owners can recreate the product, generate new iterations of the original work, and sell or temporarily award ownership by means of various types of renting. Other ownership rights exist and depend on the type of work copyrighted \[1\].
+
+When attempting to use a copyrighted work, it is best to ask for approval from the claimant. A copyright owner can grant permission to another individual to perform actions upon a copyrighted work that would normally be reserved solely for the claimant \[1\].
+
+Data Source Overview
+--------------------
+
+### Data Source
+
+All copyrights filed through the U.S. Copyright Office with the U.S. Library of Congress are publicly available via an online catalog. These files are stored in HTML format and can be accessed at a maximum of 10,000 records per search. There is currently no bulk download functionality for these files, so we developed a web-scraping strategy to access the files. We used the following approach to guide our progress:
+
+1.  Use RSelenium to cache options that use JavaScript (date, document type)
+2.  Limit searches by date in order to avoid any query with more than 10,000 records
+3.  Use the required search query term uses the first alphanumeric character (\[A-Z0-9\])
+4.  Use URL modifications to allow displaying all records in a single page
+5.  Download all records in the Full Record format to the server
+
+While the U.S. Copyright Office keeps files on many different fields, search results were limited to those that were of type “Computer File,” as all OSS technology falls within that category. After the HTML files were downloaded, they were fed through a REGEX filter to move the data to a workable database. This resulted in a database with 47 variables and 110,652 observations.
+
+Data profiling
+--------------
+
+We selected a subset of the 47 variables, as they showed the most promise for being explanatorily useful in our task of measuring OSS innovation. 1. application\_title - title of the application, sometimes different from title
+2. title - the copyright title
+3. description - short text describing the copyright application
+4. notes - notes on the copyright
+5. copyright\_claimant - The individual who filed the copyright
+6. date\_of\_creation - The date the copyright application was created
+7. date\_of\_publication - The date the copyright was published
+8. basis\_of\_claim - the reason for filing a copyright
+9. nation\_of\_first\_publication - The nation where the copyright was first published
+10. previous\_registration - if the copyright was ever previously registered
+
+These ten variables were profiled to determine the data quality and usability on the following metrics: • Completeness - completeness is a variable metric, the metric is a percentage, the number of observations that have values compared to the number of observations that “should” have values. • Value validity - value validity is a variable metric, data elements with proper values have value validity; the metric is the percentage of data elements whose attributes possess values within the range expected for a legitimate entry. • Consistency - consistency is a variable metric, it is the degree of logical agreement between variable values. The rules that specify the logical relationships between the entity values are called dependency constraints. A simple example of a dependency constraint violation would be a location disagreement, such as a zip-code that does not agree with a state code. • Uniqueness - uniqueness is a variable metric, it is the number of unique valid values that have been entered for a variable. • Duplication - duplication is a data set metric, it is the degree of replication of distinct observations per observation unit type; the metric is the percentage of observations in a data set that are duplicated.
+
+1.  Completeness
+    In the following graph, the percentage number is the amount of missing data of each field. Overall, some variables were more filled in than others; title, copyright claimant names, and date of creation are filled over 99%. Other fields including description of the computer files and copyright notes were mostly empty. The free-text response makes specific validation difficult and gives us limited information to identify whether certain computer files belong to OSS.
+
+``` r
+keep_data <- data %>%
+  select("application_title","title","description","notes","copyright_claimant","date_of_creation","date_of_publication","basis_of_claim","nation_of_first_publication","previous_registration")
+plot_missing(keep_data)
+```
+
+<img src="03_copyright_dataprofiling_files/figure-markdown_github/unnamed-chunk-1-1.png" width="90%" /> The number of missing data of each field is listed as follows:
+
+``` r
+colSums(is.na(keep_data))
+```
+
+    ##           application_title                       title 
+    ##                       49420                           0 
+    ##                 description                       notes 
+    ##                       18756                       61460 
+    ##          copyright_claimant            date_of_creation 
+    ##                          23                         737 
+    ##         date_of_publication              basis_of_claim 
+    ##                       36141                       54878 
+    ## nation_of_first_publication       previous_registration 
+    ##                       75666                       78090
+
+1.  Duplication
+    In our dataset 394observations are duplicated, which is only about 0.35% of the whole dataset.
+
+2.  Uniqueness
+    Uniqueness checks the repetation of values in each field. Among the unique observations, copyright title can be seen as a unique idenfier for every data record. These copyright records can be filed by the same copyright claimants, and in the same year (date\_of\_creation).
+
+``` r
+data.frame("number_of_unique_value" = apply(keep_data, 2, function(x) length(unique(x)))) %>%
+  tibble::rownames_to_column(., "field") %>%
+  mutate(percent_of_repeated_value = round(1-.[,2]/nrow(keep_data),3)*100)
+```
+
+    ##                          field number_of_unique_value
+    ## 1            application_title                  58127
+    ## 2                        title                 105784
+    ## 3                  description                   3254
+    ## 4                        notes                   4837
+    ## 5           copyright_claimant                  39969
+    ## 6             date_of_creation                    123
+    ## 7          date_of_publication                   6033
+    ## 8               basis_of_claim                   9211
+    ## 9  nation_of_first_publication                     87
+    ## 10       previous_registration                  22398
+    ##    percent_of_repeated_value
+    ## 1                       47.5
+    ## 2                        4.4
+    ## 3                       97.1
+    ## 4                       95.6
+    ## 5                       63.9
+    ## 6                       99.9
+    ## 7                       94.5
+    ## 8                       91.7
+    ## 9                       99.9
+    ## 10                      79.8
+
+1.  Validation
+    In our dataset application\_title, title, description, notes, copyright\_claimaint, basis\_of\_claim, nation\_of\_first\_publication, and previous\_registration are all character type, so nothing to report except number of missing value. Here we check if the value of date\_of\_creation and date\_of\_publication make sense. The result shows there are typos and wrong formats in both of the two types of dates.
+
+``` r
+#FALSE means there are inputs in the publication date that cannot be identified as dates
+x <- as.Date(keep_data$date_of_publication, "%Y-%m-%d")
+sum(is.na(x))==sum(is.na(keep_data$date_of_publication))
+```
+
+    ## [1] FALSE
+
+``` r
+#FALSE means there are typos in the creation year that makes it out of the range of years of our data collection
+y <- as.Date(paste(keep_data$date_of_creation,"-01-01",sep=""),"%Y-%m-%d")%>%na.omit()
+sum(y > "1960-01-01" & y < "2018-12-31",na.rm = TRUE)==length(y)
+```
+
+    ## [1] FALSE
+
+1.  Consistency
+    We check two things for consistency:
+
+<!-- -->
+
+1.  If the title and application\_title approximately match Most of the titles and application titles exactly match. In other cases the title is usually a short version of application titles.
+
+``` r
+test <- keep_data%>%na.omit()
+match.s1.s2<- NULL
+for(i in 1:nrow(test)){
+    s2.i<-ifelse(length(base::agrep(test$application_title[i],test$title[i],max.distance = 20, ignore.case = TRUE))>0,"match","with_revision")
+    s1.i<-i
+    match.s1.s2<-rbind(match.s1.s2,data.frame(s2.i=s2.i,s1.i=s1.i,application_title=test$application_title[i],title=test$title[i]))
+}
+head(match.s1.s2, 10)%>%knitr::kable()
+```
+
+| s2.i           |  s1.i| application\_title                                       | title                                                    |
+|:---------------|-----:|:---------------------------------------------------------|:---------------------------------------------------------|
+| match          |     1| iTunes 11.2.                                             | \[iTunes 11.2\]                                          |
+| match          |     2| iTunes 12.3.                                             | \[iTunes 12.3\]                                          |
+| match          |     3| METAL TORRENT.                                           | METAL TORRENT.                                           |
+| match          |     4| Centipede: Infestation (3DS)                             | Centipede: Infestation.                                  |
+| with\_revision |     5| Autodesk 3ds Max 2010 and User Assistance Materials.     | Autodesk 3ds Max 2010.                                   |
+| match          |     6| Autodesk Vault Collaboration 2010.                       | Autodesk Vault Collaboration 2010.                       |
+| match          |     7| The Elder Scrolls Online - Imperial Edition: PC Version. | The Elder Scrolls Online - Imperial Edition: PC Version. |
+| match          |     8| SPANISH in 10 minutes a day with CD-ROM.                 | SPANISH in 10 minutes a day.                             |
+| match          |     9| ARABIC in 10 minutes a day with CD-ROM.                  | ARABIC in 10 minutes a day.                              |
+| match          |    10| PORTUGUESE in 10 minutes a day with CD-ROM.              | PORTUGUESE in 10 minutes a day.                          |
+
+1.  if the Date\_of\_publication is in the same year or after the year of date\_of\_creation There is 0 records that has a publication year earlier than the creation year.
+
+Copyrights filed each year
+--------------------------
+
+Here is a visualization of the annual number of copyrights from 1987. The number of copyrights has been decreasing since 2004. This downward trend aligns with our understanding of the increasing of online OSS during this time.
+
+``` r
+year_match<-which(str_detect(data$date_of_creation,paste0("^(" , paste((seq(1987,2018,1)), collapse="|") , ")$")))
+df<-as.data.frame(table(data[year_match,]$date_of_creation))
+
+colnames(df)<-c("year","count")
+
+ggplot(data=df, aes(x=year, y=count)) + geom_bar(stat="identity")+ ggtitle("Number of copyrights by year")+ theme(plot.title = element_text(size=18,hjust = 0.5), axis.text.x = element_text(size=14, angle=90))
+```
+
+<img src="03_copyright_dataprofiling_files/figure-markdown_github/unnamed-chunk-6-1.png" width="90%" />
+
+Sectors
+-------
+
+### Splitting copyrights into sectors
+
+The copyright\_claimant variable contains the name of the person or entity who had filed the copyright, from which we can infer the sectors these copyright files belong to. For example, claimant names which contain "company", "coorporation" or "Ltd" can be identified as from the business sector. We attempted to identify five sectors (business, government, non-profit, university, and individual) by detecting a series of string patterns.
+
+We refined our method by modifying detection rules to increase matching records and avoid overlaps between sectors. Our result shows that 81.06% of the 39,969 unique claimant names have been identified as in either of the five sectors.
+
+``` r
+cp_data <- data %>% select("copyright_claimant")%>%
+  #unique()%>%
+  mutate(business = str_detect(string = copyright_claimant,pattern="(?i)(corp|.?com|llp|inc.j|corporation)\\.?$|(lc.|Group|Entertainment|Computing|Software)$|Service.*|Consulting|Consultants|Business|Laboratories|Technologies|Technology|Bank|Company|Studios|Solutions|inc.|l\\.?l\\.?c.?|ltd|employer|Systems|System|Limited|Publishing"))%>%
+  mutate(nonprofit = str_detect(string=copyright_claimant,
+                               pattern ="(?i)association|foundation|fund|board of realtors|assoc.|society|societies|organization|board") & business==FALSE)%>%
+  mutate(government = str_detect(string=copyright_claimant,
+                               pattern = "(?i)government|authority|council|department|commission|office|county|administration") & business == FALSE & nonprofit == FALSE)%>%
+  mutate(university = str_detect(string=copyright_claimant,
+                               pattern = "(?i)university|academy|college|school|institute|research") & business == FALSE & nonprofit == FALSE & government ==FALSE)%>%
+  mutate(individual = str_detect(string = copyright_claimant,pattern ="(?i)(, \\d{4}-|pseud|Jr.|Sr.|2nd)") & business == FALSE & nonprofit == FALSE & government == FALSE & university == FALSE)%>%
+  mutate(identified = business | nonprofit | government | university | individual)
+```
+
+The percentage of copyright claimants in each sector is shown below.
+
+``` r
+df <- cbind.data.frame(c("business","government","non-profit","university","individual","unidentified"),            c(length(which(cp_data$business)),length(which(cp_data$government)),length(which(cp_data$nonprofit)),length(which(cp_data$university)),length(which(cp_data$individual)),nrow(cp_data)-length(which(cp_data$identified))))
+            
+colnames(df)<-c("sector","count")
+df$pct<-round(as.numeric(as.character(df$count))/nrow(cp_data),3)*100
+df%>% knitr::kable()
+```
+
+| sector       |  count|   pct|
+|:-------------|------:|-----:|
+| business     |  81807|  73.9|
+| government   |    366|   0.3|
+| non-profit   |   2462|   2.2|
+| university   |   1724|   1.6|
+| individual   |  11935|  10.8|
+| unidentified |  12358|  11.2|
+
+``` r
+ggplot(df, aes(x = 2, y = pct, fill=sector)) +
+    geom_bar(width = 1, stat = "identity", color = "white") +
+    coord_polar("y",start = 0)+
+    geom_text(aes(y = pct, label = paste0(round(pct,2),"%")), color = "white",position = position_stack(vjust = 0.5))+
+    xlim(0.5, 2.5)+
+  ylab("percent")
+```
+
+<img src="03_copyright_dataprofiling_files/figure-markdown_github/unnamed-chunk-8-1.png" width="90%" />
+
+### Validating the sectors
+
+To validate our approach to split the claimaints into sectors, we randomly sampled the database, manually checked the organization name through internet searches, and compared the result to what was generated by our function. We used a random number generator to produce 50 numbers ranging between 1 and 39,969. Of the 50 observations examined, 47 were accurate. This gives a 95%-confidence interval of (.835,.987) for the accuracy of our computer program at classifying the copyrights to different sectors.
+
+OSS in the copyright data
+-------------------------
+
+The goal of this project is to identify OSI projects with copyright application. In attempting to find such OSI projects within the copyright record over the past 19 years, the team performed a number of queries on the database. Each of these are keywords associated with Open source software.
+
+1.  GNU (projects often associated with OSI), returned 34 results, mostly from the Free Software Foundation 2002-2004.
+2.  GPI (General Public License), returned 8 results, 7 of which seemed to be related to publically available files.
+3.  MIT, APACHE (common open source licenses) both have several hundred results with no clear indicators of public license.
+4.  BSD (another open source license), returned 13 results, with 5 reasonably being a BSD open source license.
+5.  Public returned 1240 results with no clear OSI indicators, though few, if any, seem like OSI.
+6.  “Open Source” returns 124 rows, but many are simply reporting that they used open source, even though some did not (9 had OS in the title).
+7.  R returned 8 results, python returned 1, and android returned 6 (popular Open source platforms), but none looked like OSI.
+
+These searches returned a tiny subset of copyrights, totaling to ~55 total OSI files that were filed with the copyright office over the 15 year period of interest.
+
+Challenges
+----------
+
+The team faced three major challenges when attempting to gather and analyze the data. First, searching for OSS software within the data yielded very few results, as most claimants did not explicitly include “open source software,” “OSS,” or a variation of this phrase in the copyright title. Without consistent listings of OSS, the current database fails to provide a complete overview of innovation with OSS.
+
+The second challenge involved the open response character format of the data. Most every variable was text response, making it difficult to categorize and statistically analyze the data. Therefore, the team was tasked with characterizing the data based on character and textual patterns within the dataset. This strategy resulted in the third challenge.
+
+The final issue concerned attempts to categorize the copyright claimants. The team aimed to sort copyright claimants based on the sector in which they belonged. The five sectors are as follows: business, government, nonprofits, universities, and individuals. Although pattern recognition coding categorized more than 80% of the dataset based on words, symbols, and phrases seen across multiple claimants, a portion did not fit into any type of naming pattern. For example, a significant number of claimants filed a copyright claim under their first and last name. Because first and last names, as well as the length and number of words in any given person’s name, varies from person to person, there was no blanket pattern by which every individual could be identified. Because of this challenge, thousands of claimants went unidentified.
+
+Conclusion of copyrights and the OSS universe
+---------------------------------------------
+
+The copyright data has a number of uses, though does not shed light on the amount of Open Source Software generated over time. As this document demonstrates, the data collected can be used to identify the number of copyrights for technical software by different intities (corporation, government, individual, educational, non-profit). It can also be used to track the amount of software copyrights filed over time, which may indicate changing copyright norms within emerging fields. However, the public nature of OSS seems to result in only a marginal number of OS software copyrights filed with the government, a finding that makes intuitive sense because of the lack of incentives that come with OSS. As such, the team identified a limited number of open source software in the set and the data does not prove useful to create a metric for OSS.
+
+Sources
+-------
+
+1.  <https://www.copyright.gov/circs/circ01.pdf>
+2.  <https://www.copyright.gov/circs/circ33.pdf>
