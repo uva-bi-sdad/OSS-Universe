@@ -45,3 +45,11 @@ Can be combined with GraphQL to obtain information that is difficult to query.
 A public dataset provided through Google which is infrequently updated and thus not a reliable data source for our purpose.   
 - GHTorrent   
 An open source project updated multiple times a day that reflects the data on Github, but did not offer information on repository licenses or additions and deletions.  
+
+## Visualization
+
+- poster_graphs  
+This folder contains scripts that are used to produce graphs for the 2019 poster. The "poster_graphs.md" file is a readable document.  
+
+- additional_scripts  
+This file contains some products that are not included in the 2019 work product.  
