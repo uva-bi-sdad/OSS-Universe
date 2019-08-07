@@ -153,39 +153,19 @@ labels <- c("1", "[2-3)","[3-4)" ,"[4-10)", "[10-50)", "[50-200)","[200-1,000)",
 # bucketing data points into bins
 bins <- cut(repo$Freq, breaks, include.lowest = T, right=FALSE, labels = labels)
 # inspect bins
-summary(bins)
-```
-
-    ##           1       [2-3)       [3-4)      [4-10)     [10-50)    [50-200) 
-    ##     2387804     1809747      417337      287345       36673        1730 
-    ## [200-1,000)     >=1,000 
-    ##         145           7
-
-``` r
+#summary(bins)
 # make a barplot that looks like a histogram
-barplot(summary(bins))
-```
+#barplot(summary(bins))
 
-![](poster_graphs_files/figure-markdown_github/unnamed-chunk-4-1.png)
-
-``` r
 # make a dataframe to make it easier to plot
 df <- cbind.data.frame(c("1 or 2 contributors (48%)","3 contributors (37%)","4 (8%)","5-10 (6%)","11-50 (0.7%)","50-200","200-1,000",">=1,000"),as.numeric(as.character(summary(bins))))
 colnames(df) <- c("contributors","freq")
 
-#ggplot(df) +
-  aes(x = contributors, y = freq, fill="orange") +
-  geom_col() + theme_bw()
-```
-
-    ## NULL
-
-``` r
 pal <- c(uva_cols("orange"),uva_cols("blue"),  uva_cols("turquoise"), uva_cols("aqua"),uva_cols("red"),uva_cols("medium grey"))
 treemap(df, index="contributors", vSize="freq",palette = pal, title="Number of contributors per repository",fontsize.labels=c(15,15,12,12,10,8,8,8),fontsize.title=18)
 ```
 
-![](poster_graphs_files/figure-markdown_github/unnamed-chunk-4-2.png)
+![](poster_graphs_files/figure-markdown_github/unnamed-chunk-4-1.png)
 
 Plot4: Contributors by sectors
 ------------------------------
@@ -221,23 +201,23 @@ cbind(c("number","percent"),result)
     ## 1:  number 7587044.000  1947689.000 64048.000
     ## 2: percent      79.042       20.291     0.667
 
-Of all the identified copyright claimants, 26.7% are from the business sector. The break down of sectors are shown as follows:
+Of all the identified copyright claimants, 78% are from the business sector. The break down of sectors are shown as follows:
 
 ``` r
 df <- cbind.data.frame(c("business","government","non-profit","university","individual"),c(length(which(match2$business)),length(which(match2$government)),length(which(match2$nonprofit)),length(which(match2$university)),length(which(match2$individual))))
             
 colnames(df)<-c("sector","count")
-df$pct<-100*round(as.numeric(as.character(df$count))/(nrow(match2)-length(which(match2$identified))),3)
+df$pct<-100*round(as.numeric(as.character(df$count))/sum(match2$identified,na.rm = TRUE),3)
 df%>% knitr::kable()
 ```
 
 | sector     |  count|   pct|
 |:-----------|------:|-----:|
-| business   |  49866|  26.7|
-| government |    908|   0.5|
-| non-profit |   1893|   1.0|
-| university |  10368|   5.6|
-| individual |   1013|   0.5|
+| business   |  49866|  77.9|
+| government |    908|   1.4|
+| non-profit |   1893|   3.0|
+| university |  10368|  16.2|
+| individual |   1013|   1.6|
 
 ``` r
 ggplot(df, aes(x = 2, y = pct, fill=sector)) +
