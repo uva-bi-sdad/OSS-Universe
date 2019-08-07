@@ -15,7 +15,6 @@ library(purrr)
 # Save a github token to your system environment or save it here.
 token <- Sys.getenv("GITHUB_GRAPHQL_TOKEN")
 
-
 # CHANGE UPDATE DBSaved and DATES
 databaseSaved <- "reponames_2016_2" #This specifies the table name you want to save in the database
 # change the start date when it breaks
@@ -28,13 +27,6 @@ licenses2 <- c("MIT","GPL-3.0","Apache-2.0","BSD-3-Clause","GPL-2.0", "ISC", "LG
 # do more than every 72 hours
 time_frames2 <- time_frames <- c(6, 24, 8, 8, 24, 24, 24, 48, 48, 48, 48, 48, 48) 
 
-# For each of those licenses and time frames it does do it.
-for (i in 1:length(licenses2)) {
-  print(paste(licenses2[i],time_frames2[i]))
-  license <- licenses2[i]
-  all_time_t <- c(time_frames2[i])
-  doIt()
-}
 
 
 
@@ -303,5 +295,12 @@ queryGithub<- function(interval) {
 
 
 
+# RUN THE QUERY: For each of those licenses and time frames it does do it.
+for (i in 1:length(licenses2)) {
+  print(paste(licenses2[i],time_frames2[i]))
+  license <- licenses2[i]
+  all_time_t <- c(time_frames2[i])
+  doIt()
+}
 
 
