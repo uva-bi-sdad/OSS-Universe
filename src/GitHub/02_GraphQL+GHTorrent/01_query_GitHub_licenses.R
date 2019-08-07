@@ -302,5 +302,3 @@ for (i in 1:length(licenses2)) {
   all_time_t <- c(time_frames2[i])
   doIt()
 }
-
-

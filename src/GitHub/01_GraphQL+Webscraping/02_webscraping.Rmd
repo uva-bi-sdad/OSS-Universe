@@ -109,10 +109,6 @@ parse_github_contributions <- function(remDr, slug = "jnewland/xhtmlize") {
       print(paste0(value$slug[1], " exists"))
     }
   }
-
-  
-  
-  
   on.exit(expr = remDr$closeall())
   on.exit(expr = dbDisconnect(conn = conn))
   return()
