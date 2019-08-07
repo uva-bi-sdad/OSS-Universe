@@ -1,28 +1,12 @@
----
-title: "Graphs for 2019 poster"
-author: "Cong Cong, Calvin Isch, Eliza Tobin"
-date: '2019-08-07'
-output:
-  github_document: default
----
+Graphs for 2019 poster
+================
+Cong Cong, Calvin Isch, Eliza Tobin
+2019-08-07
 
-```{r setup, include=FALSE, message = FALSE, warning = FALSE}
-library(RPostgreSQL)
-library(data.table)
-library(ggplot2)
-library(tidyverse)
-library(treemap)
+Plot1: Repositories created each year
+-------------------------------------
 
-# Setting root directory
-knitr::opts_knit$set(echo = TRUE,
-                     root.dir = rprojroot::find_rstudio_root_file())
-
-#Set Scientific notation output for knitr
-options(scipen = 999)
-```
-
-##Plot1: Repositories created each year
-```{r warning = FALSE, message = FALSE}
+``` r
 data <- fread("./data/oss/final/Github/all_repos_commits.csv")
 finalTable <- data %>% group_by(year=year_repo) %>% summarize(repoNum=n()/1000000)
 
@@ -44,8 +28,12 @@ p + labs(title="Amount of Repositories Created per Year in Millions",
          x="Year", y = "Amount in Millions")
 ```
 
-##Plot2: Change of proportions of different OSS licenses 
-```{r warning = FALSE, message = FALSE}
+![](poster_graphs_files/figure-markdown_github/unnamed-chunk-1-1.png)
+
+Plot2: Change of proportions of different OSS licenses
+------------------------------------------------------
+
+``` r
 # Get all licenses from 2018
 all_year3 <- data %>% filter(year_repo=="2018")
 #all_year3$repo_slug <- paste(all_year3$login,"/",all_year3$reponame,sep="")
@@ -97,11 +85,20 @@ ggplot(data = licensesNice, aes(x = Year, y = Percent, group = licenses)) +
   )
 ```
 
-##Plot3: Lollipop chart of top five shares
-```{r warning = FALSE, message = FALSE}
+![](poster_graphs_files/figure-markdown_github/unnamed-chunk-2-1.png)
+
+Plot3: Lollipop chart of top five shares
+----------------------------------------
+
+``` r
 test <- data %>% group_by(repo_slug,license) 
 count <- table(test$license) %>% data.frame() %>% arrange(desc(Freq))
 sum(count$Freq)
+```
+
+    ## [1] 9593592
+
+``` r
 toplicenses.df <- count[c(1:5),]
 colnames(toplicenses.df) <- c("License","Count")
 toplicenses.df$Percent <- toplicenses.df$Count*100/sum(count$Freq)
@@ -120,8 +117,12 @@ ggplot(data=toplicenses.df, aes(x=reorder(License,-Percent), y=Percent,ymax=100)
   ylab("Percent") 
 ```
 
-##Plot4: Contributors per repo
-```{r warning = FALSE, message = FALSE}
+![](poster_graphs_files/figure-markdown_github/unnamed-chunk-3-1.png)
+
+Plot4: Contributors per repo
+----------------------------
+
+``` r
 # define the color used
 uva_colors <- c(
   `blue`        = "#232D4B",
@@ -153,9 +154,21 @@ labels <- c("1", "[2-3)","[3-4)" ,"[4-10)", "[10-50)", "[50-200)","[200-1,000)",
 bins <- cut(repo$Freq, breaks, include.lowest = T, right=FALSE, labels = labels)
 # inspect bins
 summary(bins)
+```
+
+    ##           1       [2-3)       [3-4)      [4-10)     [10-50)    [50-200) 
+    ##     2387804     1809747      417337      287345       36673        1730 
+    ## [200-1,000)     >=1,000 
+    ##         145           7
+
+``` r
 # make a barplot that looks like a histogram
 barplot(summary(bins))
+```
 
+![](poster_graphs_files/figure-markdown_github/unnamed-chunk-4-1.png)
+
+``` r
 # make a dataframe to make it easier to plot
 df <- cbind.data.frame(c("1 or 2 contributors (48%)","3 contributors (37%)","4 (8%)","5-10 (6%)","11-50 (0.7%)","50-200","200-1,000",">=1,000"),as.numeric(as.character(summary(bins))))
 colnames(df) <- c("contributors","freq")
@@ -163,13 +176,21 @@ colnames(df) <- c("contributors","freq")
 #ggplot(df) +
   aes(x = contributors, y = freq, fill="orange") +
   geom_col() + theme_bw()
+```
 
+    ## NULL
+
+``` r
 pal <- c(uva_cols("orange"),uva_cols("blue"),  uva_cols("turquoise"), uva_cols("aqua"),uva_cols("red"),uva_cols("medium grey"))
 treemap(df, index="contributors", vSize="freq",palette = pal, title="Number of contributors per repository",fontsize.labels=c(15,15,12,12,10,8,8,8),fontsize.title=18)
 ```
 
-##Plot4: Contributors by sectors
-```{r warning = FALSE, message = FALSE}
+![](poster_graphs_files/figure-markdown_github/unnamed-chunk-4-2.png)
+
+Plot4: Contributors by sectors
+------------------------------
+
+``` r
 company <- unique(data$company) %>% data.frame() 
 colnames(company) <- "name"
 
@@ -186,7 +207,8 @@ match2 <- company %>% mutate(business = str_detect(string = name,               
 ```
 
 How many are identified:
-```{r}
+
+``` r
 result <- data.table(missing = sum(data$company=="", na.rm = TRUE)+sum(is.na(data$company)),
            matched = sum(match2$identified,na.rm = TRUE))
 result$unidentified=nrow(data)-result$missing-result$matched
@@ -194,16 +216,35 @@ result<- result[ , c(1,3,2)]
 result <- rbind(result, round(result*100/nrow(data),3))
 cbind(c("number","percent"),result)
 ```
+
+    ##         V1     missing unidentified   matched
+    ## 1:  number 7587044.000  1947689.000 64048.000
+    ## 2: percent      79.042       20.291     0.667
+
 Of all the identified copyright claimants, 26.7% are from the business sector. The break down of sectors are shown as follows:
-```{r}
+
+``` r
 df <- cbind.data.frame(c("business","government","non-profit","university","individual"),c(length(which(match2$business)),length(which(match2$government)),length(which(match2$nonprofit)),length(which(match2$university)),length(which(match2$individual))))
             
 colnames(df)<-c("sector","count")
 df$pct<-100*round(as.numeric(as.character(df$count))/(nrow(match2)-length(which(match2$identified))),3)
 df%>% knitr::kable()
+```
+
+| sector     |  count|   pct|
+|:-----------|------:|-----:|
+| business   |  49866|  26.7|
+| government |    908|   0.5|
+| non-profit |   1893|   1.0|
+| university |  10368|   5.6|
+| individual |   1013|   0.5|
+
+``` r
 ggplot(df, aes(x = 2, y = pct, fill=sector)) +
     geom_bar(width = 1, stat = "identity", color = "white") +
     coord_polar("y",start = 0)+
     geom_text(aes(y = pct, label = paste0(round(pct,2),"%")), color = "white",position = position_stack(vjust = 0.5))+
     xlim(0.5, 2.5)
 ```
+
+![](poster_graphs_files/figure-markdown_github/unnamed-chunk-7-1.png)
