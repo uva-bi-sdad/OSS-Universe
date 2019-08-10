@@ -16,7 +16,7 @@ The results are saved in database oss->universe->contribution and oss->universe-
 - 01_query_GitHub_licenses
 This is the upgraded version of GraphQL queries. We have used this script to collect repo names, owner login names and OSS licenses from 2012 to 2018. 
 The tables in the database that store our final results are:  
-reponames_2012_2  
+reponames_2012  
 reponames_2013  
 reponames_2014  
 reponames_2015  
